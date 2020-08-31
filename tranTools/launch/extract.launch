@@ -1,6 +1,0 @@
-<launch>
-	<node pkg="tranTools" type="extractSeg" name="extract" output="screen">
-		<param name="">
-		<param name="" type="double" value="0"/>
-	</node>
-</launch>

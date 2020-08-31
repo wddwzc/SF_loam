@@ -1,0 +1,23 @@
+<launch>
+	<node pkg="trans_tools" type="cluster" name="cluster" output="screen">
+		<param name="flie_path" type="string" value="/home/test/labelMap05.txt"/>
+		<param name="index_bein" type="int" value="5700"/>
+		<param name="index_end" type="int" value="6200"/>
+
+		<param name="leaf_size" type="double" value="0.1"/>
+		<param name="leaf_min_points" type="int" value="3"/>
+
+		<param name="search_K" type="int" value="20"/>
+		<param name="search_radius" type="double" value="0.2"/>
+
+		<param name="min_cluster_size" type="int" value="100"/>
+		<param name="max_cluster_size" type="int" value="50000"/>
+		<param name="number_of_neighbours" type="int" value="5"/>
+		<param name="smoothness_threshold" type="double" value="10.0"/>
+		<param name="curvature_threshold" type="double" value="3.0"/>
+
+		<param name="plane_threshold" type="double" value="0.03"/>
+
+		<param name="save_clusters" type="bool" value="false"/>
+	</node>
+</launch>

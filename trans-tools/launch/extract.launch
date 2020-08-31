@@ -1,0 +1,22 @@
+<launch>
+	<node pkg="tranTools" type="extractSeg" name="extract" output="screen">
+		<param name="flie_path" type="string" value="/home/wzc/Project/ICICIP/labelMap09.txt"/>
+		<param name="index_bein" type="int" value="1000"/>
+		<param name="index_end" type="int" value="2000"/>
+
+		<param name="leaf_size" type="double" value="0.1"/>
+		<param name="leaf_min_points" type="int" value="3"/>
+
+		<param name="search_K" type="int" value="20"/>
+		<param name="search_radius" type="double" value="0.3"/>
+
+		
+		<param name="min_cluster_size" type="int" value="100"/>
+		<param name="max_cluster_size" type="int" value="50000"/>
+		<param name="number_of_neighbours" type="int" value="5"/>
+		<param name="smoothness_threshold" type="double" value="10.0"/>
+		<param name="curvature_threshold" type="double" value="3.0"/>
+
+		<param name="save_clusters" type="bool" value="false"/>
+	</node>
+</launch>
