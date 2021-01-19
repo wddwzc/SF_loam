@@ -44,6 +44,8 @@
 
 #include <gtsam/nonlinear/ISAM2.h>
 
+#include <octomap/octomap.h>
+
 using namespace gtsam;
 
 class mapOptimization{
@@ -77,6 +79,13 @@ private:
     ros::Subscriber subLaserOdometry;
     ros::Subscriber subImu;
 
+
+#ifdef SEMANTIC_KITTI
+    ros::Subscriber subClassifiedCentroid;
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr classifiedCentroid;
+#endif
+
+
     nav_msgs::Odometry odomAftMapped;
     tf::StampedTransform aftMappedTrans;
     tf::TransformBroadcaster tfBroadcaster;
@@ -100,7 +109,6 @@ private:
 
     pcl::PointCloud<PointType>::Ptr cloudKeyPoses3D;
     pcl::PointCloud<PointTypePose>::Ptr cloudKeyPoses6D;
-
     
 
     pcl::PointCloud<PointType>::Ptr surroundingKeyPoses;
@@ -245,6 +253,10 @@ public:
         pubIcpKeyFrames = nh.advertise<sensor_msgs::PointCloud2>("/corrected_cloud", 2);
         pubRecentKeyFrames = nh.advertise<sensor_msgs::PointCloud2>("/recent_cloud", 2);
         pubRegisteredCloud = nh.advertise<sensor_msgs::PointCloud2>("/registered_cloud", 2);
+
+#ifdef SEMANTIC_KITTI
+        // subClassifiedCentroid = nh.subscribe<sensor_msgs::PointCloud2> 
+#endif
 
         downSizeFilterCorner.setLeafSize(0.2, 0.2, 0.2);
         downSizeFilterSurf.setLeafSize(0.4, 0.4, 0.4);
@@ -901,8 +913,17 @@ public:
         pcl::PointCloud<PointType>::Ptr unused_result(new pcl::PointCloud<PointType>());
         icp.align(*unused_result);
 
-        if (icp.hasConverged() == false || icp.getFitnessScore() > historyKeyframeFitnessScore)
+#ifdef DEBUG_LOOPCLOSURE
+        // if (closestHistoryFrameID > 135 && closestHistoryFrameID < 145) {
+        //     goto L1;
+        // }
+#endif
+
+        if (icp.hasConverged() == false || icp.getFitnessScore() > historyKeyframeFitnessScore) {
+            cout << "loop detect failed: " << latestFrameIDLoopCloure << endl;
             return;
+        }
+
         // publish corrected cloud
         if (pubIcpKeyFrames.getNumSubscribers() != 0){
             pcl::PointCloud<PointType>::Ptr closed_cloud(new pcl::PointCloud<PointType>());
@@ -912,7 +933,7 @@ public:
             cloudMsgTemp.header.stamp = ros::Time().fromSec(timeLaserOdometry);
             cloudMsgTemp.header.frame_id = "/camera_init";
             pubIcpKeyFrames.publish(cloudMsgTemp);
-        }   
+        }
         /*
         	get pose constraint
         	*/
@@ -1425,6 +1446,10 @@ public:
         thisPose3D.z = latestEstimate.translation().x();
         thisPose3D.intensity = cloudKeyPoses3D->points.size(); // this can be used as index
         cloudKeyPoses3D->push_back(thisPose3D);
+
+#ifdef DEBUG_LOOPCLOSURE
+        cout << "Key frame ID: " << cloudKeyPoses3D->points.size() << endl;
+#endif
 
         thisPose6D.x = thisPose3D.x;
         thisPose6D.y = thisPose3D.y;

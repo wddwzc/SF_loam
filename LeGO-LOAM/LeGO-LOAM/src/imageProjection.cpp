@@ -51,17 +51,20 @@ private:
     ros::Publisher pubOutlierCloud;
 
 #ifdef SEMANTIC_KITTI
+    // SEMANTIC
     // publisher
     ros::Publisher pubColoredLaserCloud;
-    ros::Publisher pubClassifiedCentroid;
+    ros::Publisher pubClassifiedCentroidRGB;
     ros::Publisher pubClassifiedCloud;
     ros::Publisher pubCentroid2Seg;
+    ros::Publisher pubClassifiedCentroid; // for mapOptimization
     ros::Publisher pubNoGroundCloud;  // for mapOptimization
     // PointXYZRGB for visulizer
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr laserCloudColor;
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr classifiedCentroid;
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr classifiedCentroidRGB;
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr classifiedCloud;
     visualization_msgs::Marker marker_Centroid2Seg;
+    pcl::PointCloud<pcl::PointXYZL>::Ptr classifiedCentroid; // for mapOptimization
     pcl::PointCloud<pcl::PointXYZL>::Ptr laserCloud_noGround; // for mapOptimization
 
     vector<int> index_full;  // from valid point to raw cloud ID (fullCloud->laserCloudIn)
@@ -104,9 +107,21 @@ private:
     uint16_t *queueIndX; // array for breadth-first search process of segmentation, for speed
     uint16_t *queueIndY;
 
+    // launch parameter
+    bool param_semantic;
+    // int N_SCAN;
+    // int Horizon_SCAN;
+    // float ang_res_x;
+    // float ang_res_y;
+    // float ang_bottom;
+    // int groundScanInd;
+
 public:
     ImageProjection():
-        nh("~"){
+        nh("~") {
+        
+        // nh.getParam("/sf_loam/semantic", param_semantic);
+        // nh.getParam("")
 
         subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>(pointCloudTopic, 1, &ImageProjection::cloudHandler, this);
 
@@ -122,10 +137,11 @@ public:
 #ifdef SEMANTIC_KITTI
         // for visulize
         pubColoredLaserCloud = nh.advertise<sensor_msgs::PointCloud2> ("/A_laser_cloud_color", 1);
-        pubClassifiedCentroid = nh.advertise<sensor_msgs::PointCloud2> ("/A_classified_centroid", 1);
+        pubClassifiedCentroidRGB = nh.advertise<sensor_msgs::PointCloud2> ("/A_classified_centroid_color", 1);
         pubClassifiedCloud = nh.advertise<sensor_msgs::PointCloud2> ("/A_classified_cloud", 1);
         pubCentroid2Seg = nh.advertise<visualization_msgs::Marker>("/A_marker_centroid2seg", 1);
         // for mapOptimization
+        pubClassifiedCentroid = nh.advertise<sensor_msgs::PointCloud2> ("/A_classified_centroid", 1);
         pubNoGroundCloud = nh.advertise<sensor_msgs::PointCloud2> ("/A_laser_cloud_noground", 1);
 #endif
 
@@ -142,9 +158,10 @@ public:
 
 #ifdef SEMANTIC_KITTI
         laserCloudColor.reset(new pcl::PointCloud<pcl::PointXYZRGB>());
-        classifiedCentroid.reset(new pcl::PointCloud<pcl::PointXYZRGB>());
+        classifiedCentroidRGB.reset(new pcl::PointCloud<pcl::PointXYZRGB>());
         classifiedCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>());
 
+        classifiedCentroid.reset(new pcl::PointCloud<pcl::PointXYZL>());
         laserCloud_noGround.reset(new pcl::PointCloud<pcl::PointXYZL>());
 
         index_full.resize(N_SCAN*Horizon_SCAN);
@@ -218,8 +235,9 @@ public:
 
 #ifdef SEMANTIC_KITTI
         laserCloudColor->clear();
-        classifiedCentroid->clear();
+        classifiedCentroidRGB->clear();
         classifiedCloud->clear();
+        classifiedCentroid->clear();
         laserCloud_noGround->clear();
         index_full.assign(N_SCAN*Horizon_SCAN, -1);
         marker_Centroid2Seg.points.clear();
@@ -231,6 +249,7 @@ public:
     void copyPointCloud(const sensor_msgs::PointCloud2ConstPtr& laserCloudMsg){
 
         cloudHeader = laserCloudMsg->header;
+
         // cloudHeader.stamp = ros::Time::now(); // Ouster lidar users may need to uncomment this line
         pcl::fromROSMsg(*laserCloudMsg, *laserCloudIn);
         // Remove Nan points
@@ -248,7 +267,7 @@ public:
             if (laserCloudInRing->is_dense == false) {
                 ROS_ERROR("Point cloud is not in dense format, please remove NaN points first!");
                 ros::shutdown();
-            }  
+            }
         }
     }
     
@@ -359,9 +378,9 @@ public:
             marker_p.z += 10.0;
             marker_Centroid2Seg.points.push_back(marker_p);
 
-            classifiedCentroid->push_back(centroid);
+            classifiedCentroidRGB->push_back(centroid);
             centroid.z += 10.0;
-            classifiedCentroid->push_back(centroid);
+            classifiedCentroidRGB->push_back(centroid);
 
             for (auto &index : segment_to_add.indices) {
                 pcl::PointXYZL cur_point = laserCloud_noGround->points[index];
@@ -409,6 +428,13 @@ public:
 
         cloudSize = laserCloudIn->points.size();
 
+        vector<int> ring_num(N_SCAN, 0);
+        cout << "cloudSize: " << cloudSize << endl;
+        int valid_size = 0;
+
+        vector<vector<int>> counts(N_SCAN, vector<int>(Horizon_SCAN, 0));
+        
+
         for (size_t i = 0; i < cloudSize; ++i){
 
             thisPoint.x = laserCloudIn->points[i].x;
@@ -433,10 +459,12 @@ public:
             }
             else{
                 verticalAngle = atan2(thisPoint.z, sqrt(thisPoint.x * thisPoint.x + thisPoint.y * thisPoint.y)) * 180 / M_PI;
-                rowIdn = (verticalAngle + ang_bottom) / ang_res_y;
+                rowIdn = (verticalAngle + ang_bottom) / ang_res_y + 0.3;
             }
             if (rowIdn < 0 || rowIdn >= N_SCAN)
                 continue;
+
+            ring_num[rowIdn]++;
 
             horizonAngle = atan2(thisPoint.x, thisPoint.y) * 180 / M_PI;
 
@@ -446,6 +474,11 @@ public:
 
             if (columnIdn < 0 || columnIdn >= Horizon_SCAN)
                 continue;
+
+            
+            counts[rowIdn][columnIdn]++;
+            if (counts[rowIdn][columnIdn] == 1)
+                valid_size++;
 
             range = sqrt(thisPoint.x * thisPoint.x + thisPoint.y * thisPoint.y + thisPoint.z * thisPoint.z);
             if (range < sensorMinimumRange)
@@ -464,6 +497,19 @@ public:
             index_full[index] = i;
 #endif
         }
+
+        cout << "valid size: " << valid_size << endl;
+        for (auto &r : ring_num)
+            cout << r << " ";
+        cout << endl;
+
+        for (auto &row : counts) {
+            for (auto &col : row) {
+                cout << col;
+            }
+            cout << endl;
+        }
+
     }
 
     // save ground points into groundCloud
@@ -750,6 +796,15 @@ public:
             laserCloudTemp.header.frame_id = "base_link";
             pubClassifiedCloud.publish(laserCloudTemp);
         }
+
+        if (pubClassifiedCentroidRGB.getNumSubscribers() != 0) {
+            pcl::toROSMsg(*classifiedCentroidRGB, laserCloudTemp);
+            laserCloudTemp.header.stamp = cloudHeader.stamp;
+            laserCloudTemp.header.frame_id = "base_link";
+            pubClassifiedCentroidRGB.publish(laserCloudTemp);
+        }
+
+
 
         if (pubClassifiedCentroid.getNumSubscribers() != 0) {
             pcl::toROSMsg(*classifiedCentroid, laserCloudTemp);

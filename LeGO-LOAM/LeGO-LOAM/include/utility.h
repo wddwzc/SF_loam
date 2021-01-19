@@ -49,11 +49,11 @@
 #include "dbscan.h"
 
 // use the KITTI Semantic data, XYZL
-#define SEMANTIC_KITTI
+// #define SEMANTIC_KITTI
 // #define DEBUG_CLUSTER
-#define DEBUG_PUBLISH
-#define DEBUG_LOOPCLOSURE
-#define TIME_COST
+// #define DEBUG_PUBLISH
+//#define DEBUG_LOOPCLOSURE
+// #define TIME_COST
 
 #define PI 3.14159265
 
@@ -64,8 +64,10 @@ typedef pcl::PointXYZI  PointType;
 #ifdef SEMANTIC_KITTI
 extern const string pointCloudTopic = "/kitti/velo/label";
 #else
-extern const string pointCloudTopic = "/velodyne_points";
+// extern const string pointCloudTopic = "/velodyne_points";
+extern const string pointCloudTopic = "/kitti/velo/pointxyzi";
 #endif // SEMANTIC_KITTI
+
 extern const string imuTopic = "/imu/data";
 
 // Save pcd
@@ -75,7 +77,7 @@ extern const string fileDirectory = "/tmp/";
 extern const bool useCloudRing = false;
 #else
 // Using velodyne cloud "ring" channel for image projection (other lidar may have different name for this channel, change "PointXYZIR" below)
-extern const bool useCloudRing = true; // if true, ang_res_y and ang_bottom are not used
+extern const bool useCloudRing = false; // if true, ang_res_y and ang_bottom are not used
 #endif
 
 // VLP-16
@@ -88,13 +90,36 @@ extern const float ang_bottom = 15.0+0.1;
 extern const int groundScanInd = 7;
 */
 
+
 // VLP-64
 extern const int N_SCAN = 64;
 extern const int Horizon_SCAN = 2250;
 extern const float ang_res_x = 0.16;
-extern const float ang_res_y = 0.472;
+extern const float ang_res_y = 0.427;
 extern const float ang_bottom = 24.9;
 extern const int groundScanInd = 50;
+
+
+// -24.9
+// 2
+// 64
+
+    // if (angle > -8.7) {
+    //   scanID = int(63-fabs(angle-2)*3+0.5);
+    // } else {
+    //   scanID = int(0+(fabs(angle+24.87)*2+0.5));//velodyne 64
+    // }
+    // //cout<<scanID<<",";
+    //  /*if (angle < 0)
+    //  {
+    //    scanID--;
+    //  }*/
+
+    //  if (scanID>63||scanID<0)
+    //  {
+
+    //    continue;
+    //  }
 
 // HDL-32E
 // extern const int N_SCAN = 32;
@@ -195,7 +220,7 @@ POINT_CLOUD_REGISTER_POINT_STRUCT (PointXYZIR,
 
 /*
     * A point cloud type that has 6D pose info ([x,y,z,roll,pitch,yaw] intensity is time stamp)
-    */
+	*/
 struct PointXYZIRPYT
 {
     PCL_ADD_POINT4D
@@ -214,7 +239,30 @@ POINT_CLOUD_REGISTER_POINT_STRUCT (PointXYZIRPYT,
                                    (double, time, time)
 )
 
-typedef PointXYZIRPYT  PointTypePose;
+typedef PointXYZIRPYT PointTypePose;
+
+
+
+/*
+    * A point cloud type that has intensity and class label.
+	*/
+struct PointXYZIL
+{
+    PCL_ADD_POINT4D
+    PCL_ADD_INTENSITY;
+	float label;
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+} EIGEN_ALIGN16;
+
+POINT_CLOUD_REGISTER_POINT_STRUCT (PointXYZIL,
+                                   (float, x, x)
+								   (float, y, y)
+                                   (float, z, z)
+								   (float, intensity, intensity)
+                                   (float, label, label)
+)
+
+typedef PointXYZIL PointSemantic;
 
 
 
@@ -329,34 +377,85 @@ std::unordered_map<int, int> classes_map = {
 	{259, 24}
 };
 
+
+// 26 classes mapping to  classes
+// 0 unlabeled
+// 1 car
+// 2 bicycle
+// 3 person
+// 4 road(ground)
+// 5 building
+// 6 vegetation
+// 7 trunk(pole)
+
+std::unordered_map<int, int> simple_classes_map = {
+    {0, 0},  // 0 unlabeled
+    {1, 1},  // 1 car
+    {2, 2},  // 2 bicycle
+    {3, 2},  // motorcycle -> bicycle 2
+    {4, 1},  // truck -> car 1
+    {5, 1},  // other-vehicle -> car 1
+    {6, 3},  // 3 person
+    {7, 2},  // bicyclist -> bicycle 2
+    {8, 2},  // motorcyclist -> bicycle 2
+    {9, 4},  // 4 road
+    {10, 4}, // parking -> road 4
+    {11, 4}, // sidewalk -> road 4
+    {12, 4}, // other-ground -> road 4
+    {13, 5}, // 5 building
+    {14, 5}, // fence -> building 5
+    {15, 6}, // 6 vegetation
+    {16, 7}, // 7 trunk
+    {17, 4}, // terrain -> road 4
+    {18, 7}, // pole -> trunk 7
+    {19, 7}, // traffic-sign -> trunk 7
+    {20, 1}, // moving-car -> car 1
+    {21, 2}, // moving-bicyclist -> bicycle 2
+    {22, 3}, // moving-person -> person 3
+    {23, 2}, // moving-motorcyclist -> cyclist 2
+    {24, 1}, // moving-other-vehicle -> car 1
+    {25, 1}, // moving-truck -> car 1
+};
+
+
+// 0 building
+// 1 road
+// 2 vegetation
+// 3 vehicle
+// 4 pole
+// 5 pedestrian
+
+
 /*
-0:  0,1,52,99
-1:  10
-2:  11
-3:  15
-4:  18
-5:  13,16,20
-6:  30
-7:  31
-8:  32
-9:  40,60
-10: 44
-11: 48
-12: 49
-13: 50
-14: 51
-15: 70
-16: 71
-17: 72
-18: 80
-19: 81
-20: 252
-21: 253
-22: 254
-23: 255
-24: 256,257,259
-25: 258
+0:  0,1,52,99   # "unlabeled"
+1:  10          # "car"
+2:  11          # "bicycle"
+3:  15          # "motorcycle"
+4:  18          # "truck"
+5:  13,16,20    # "other-vehicle"
+6:  30          # "person"
+7:  31          # "bicyclist"
+8:  32          # "motorcyclist"
+9:  40,60       # "road"
+10: 44          # "parking"
+11: 48          # "sidewalk"
+12: 49          # "other-ground"
+13: 50          # "building"
+14: 51          # "fence"
+15: 70          # "vegetation"
+16: 71          # "trunk"
+17: 72          # "terrain"
+18: 80          # "pole"
+19: 81          # "traffic-sign"
+20: 252         # "moving-car"
+21: 253         # "moving-bicyclist"
+22: 254         # "moving-person"
+23: 255         # "moving-motorcyclist"
+24: 256,257,259 # "moving-other-vehicle"
+25: 258         # "moving-truck"
 */
+
+
 
 /*
   0 : 0     # "unlabeled"
@@ -394,6 +493,7 @@ std::unordered_map<int, int> classes_map = {
   258: 25    # "moving-truck"
   259: 24    # "moving-other-vehicle"
 */
+
 
 #endif // SEMANTIC_KITTI
 

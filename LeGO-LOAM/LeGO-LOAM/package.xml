@@ -47,4 +47,6 @@
   <build_depend>gtsam</build_depend>
   <run_depend>gtsam</run_depend>
 
+  <build_depend>octomap</build_depend>
+  <run_depend>octomap</run_depend>
 </package>
