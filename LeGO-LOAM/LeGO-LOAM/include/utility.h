@@ -21,6 +21,10 @@
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/common/common.h>
+// #include <pcl/common/impl/transforms.hpp>
+
+#include <pcl/common/transforms.h>
+
 #include <pcl/registration/icp.h>
 #include <pcl/segmentation/extract_clusters.h>
 

@@ -26,6 +26,7 @@ find_package(GTSAM REQUIRED QUIET)
 find_package(PCL REQUIRED QUIET)
 find_package(OpenCV REQUIRED QUIET)
 find_package(octomap REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 catkin_package(
   INCLUDE_DIRS include
@@ -40,6 +41,7 @@ include_directories(
 	${OpenCV_INCLUDE_DIRS}
 	${GTSAM_INCLUDE_DIR}
   ${OCTOMAP_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIR}
 )
 
 link_directories(
@@ -67,4 +69,6 @@ target_link_libraries(mapOptmization ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${Open
 add_executable(transformFusion src/transformFusion.cpp)
 target_link_libraries(transformFusion ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES})
 
+add_executable(localMap src/localmap.cpp)
+target_link_libraries(localMap ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES} ${OCTOMAP_LIBRARIES})
 
