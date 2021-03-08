@@ -72,3 +72,5 @@ target_link_libraries(transformFusion ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${Ope
 add_executable(localMap src/localmap.cpp)
 target_link_libraries(localMap ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES} ${OCTOMAP_LIBRARIES})
 
+add_executable(octomap_test src/octomap_test.cpp)
+target_link_libraries(octomap_test ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES} ${OCTOMAP_LIBRARIES})

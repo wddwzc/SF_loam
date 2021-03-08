@@ -44,8 +44,6 @@
 
 #include <gtsam/nonlinear/ISAM2.h>
 
-#include <octomap/octomap.h>
-
 using namespace gtsam;
 
 class mapOptimization{
