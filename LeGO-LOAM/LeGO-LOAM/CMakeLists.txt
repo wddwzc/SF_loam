@@ -1,7 +1,10 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(lego_loam)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -O3")
+set(CMAKE_CXX_STANDARD 14)
+#SET(CMAKE_BUILD_TYPE "Debug”)
+SET(CMAKE_BUILD_TYPE "Release")
 
 find_package(catkin REQUIRED COMPONENTS
   tf
@@ -41,7 +44,7 @@ include_directories(
 	${OpenCV_INCLUDE_DIRS}
 	${GTSAM_INCLUDE_DIR}
   ${OCTOMAP_INCLUDE_DIRS}
-  ${EIGEN3_INCLUDE_DIR}
+  # ${EIGEN3_INCLUDE_DIR}
 )
 
 link_directories(
@@ -62,9 +65,17 @@ add_executable(featureAssociation src/featureAssociation.cpp)
 add_dependencies(featureAssociation ${catkin_EXPORTED_TARGETS} cloud_msgs_gencpp)
 target_link_libraries(featureAssociation ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES})
 
-add_executable(mapOptmization src/mapOptmization.cpp)
-target_link_libraries(mapOptmization ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES} gtsam 
-                      ${OCTOMAP_LIBRARIES})
+add_executable(mapOptmization 
+    src/mapOptmization.cpp
+    src/Scancontext.cpp
+)
+target_link_libraries(mapOptmization 
+    ${catkin_LIBRARIES} 
+    ${PCL_LIBRARIES} 
+    ${OpenCV_LIBRARIES} 
+    gtsam
+    Eigen3::Eigen
+)
 
 add_executable(transformFusion src/transformFusion.cpp)
 target_link_libraries(transformFusion ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES})

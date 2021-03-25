@@ -44,8 +44,8 @@
  * documentation</a>
  */
 
-#ifndef NANOFLANN_HPP_
-#define NANOFLANN_HPP_
+#ifndef _MY_NANOFLANN_HPP_
+#define _MY_NANOFLANN_HPP_
 
 #include <algorithm>
 #include <array>
@@ -2036,4 +2036,4 @@ struct KDTreeEigenMatrixAdaptor {
 /** @} */ // end of grouping
 } // namespace nanoflann
 
-#endif /* NANOFLANN_HPP_ */
+#endif /* MINE_NANOFLANN_HPP_ */

@@ -1,14 +1,14 @@
 #include "utility.h"
+#include "parameter.h"
 
 class KittiProcess{
 
 private:
-
     ros::NodeHandle nh;
 
     ros::Subscriber subKittiCameraOdom;     // 在相机坐标系下
     ros::Subscriber subKittiLaserOdom;      // 在激光坐标系下的odom
-    ros::Subscriber subKittiPointCloud;			// 
+    ros::Subscriber subKittiPointCloud;		// 
     ros::Subscriber subKittiPointLabel;
 	ros::Subscriber subKittiPointAll;		// 
 
@@ -19,10 +19,10 @@ private:
 
 	pcl::PointCloud<pcl::PointXYZI>::Ptr kittiPointCloudIn;
 	pcl::PointCloud<pcl::PointXYZL>::Ptr kittiPointLabelIn;
-	pcl::PointCloud<PointSemantic>::Ptr kittiPointAllIn;
+	pcl::PointCloud<PointType>::Ptr kittiPointAllIn;
 	pcl::PointCloud<pcl::PointXYZI>::Ptr kittiPointCloudOut;
 	pcl::PointCloud<pcl::PointXYZL>::Ptr kittiPointLabelOut;
-	pcl::PointCloud<PointSemantic>::Ptr kittiPointAllOut;
+	pcl::PointCloud<PointType>::Ptr kittiPointAllOut;
 
 	nav_msgs::Odometry kittiLaserOdometry2;
 
@@ -34,33 +34,17 @@ private:
 	double timeNewKittiPointLabel;
 	double timeNewKittiPointAll;
 
-    // tf::StampedTransform laserOdometryTrans2;
-    // tf::TransformBroadcaster tfBroadcaster2;
-
-    // tf::StampedTransform map_2_camera_init_Trans;
-    // tf::TransformBroadcaster tfBroadcasterMap2CameraInit;
-
-    // tf::StampedTransform camera_2_base_link_Trans;
-    // tf::TransformBroadcaster tfBroadcasterCamera2Baselink;
-
-    // float transformSum[6];
-    // float transformIncre[6];
-    // float transformMapped[6];
-    // float transformBefMapped[6];
-    // float transformAftMapped[6];
-
     std_msgs::Header currentHeader;
 
-    // launch parameter
-    bool param_fusion;
+	ParamServer param;
 
 public:
 
     KittiProcess() {
         
-        nh.getParam("/kittiProcess/fusion", param_fusion);
+        nh.getParam("/kittiProcess/fusion", param.fusion);
         
-		if (param_fusion) {
+		if (param.fusion) {
 			subKittiPointCloud = nh.subscribe<sensor_msgs::PointCloud2>("/kitti/velo/pointxyzi", 1, &KittiProcess::kittiPointCloudHandler, this);
 			subKittiPointLabel = nh.subscribe<sensor_msgs::PointCloud2>("/kitti/velo/pointxyzl", 1, &KittiProcess::kittiPointLabelHandler, this);
 			pubKittiPointAll = nh.advertise<sensor_msgs::PointCloud2>("/kitti/velo/pointall", 2);
@@ -78,14 +62,12 @@ public:
         // 发布 ground truth
         pubLaserOdomGT = nh.advertise<nav_msgs::Odometry>("/kitti/laser_GT", 5);
 		
-
 		kittiPointCloudIn.reset(new pcl::PointCloud<pcl::PointXYZI>());
 		kittiPointLabelIn.reset(new pcl::PointCloud<pcl::PointXYZL>());
-		kittiPointAllIn.reset(new pcl::PointCloud<PointSemantic>());
+		kittiPointAllIn.reset(new pcl::PointCloud<PointType>());
 		kittiPointCloudOut.reset(new pcl::PointCloud<pcl::PointXYZI>());
 		kittiPointLabelOut.reset(new pcl::PointCloud<pcl::PointXYZL>());
-		kittiPointAllOut.reset(new pcl::PointCloud<PointSemantic>());
-
+		kittiPointAllOut.reset(new pcl::PointCloud<PointType>());
 
         kittiLaserOdometry2.header.frame_id = "/velodyne_init";
         kittiLaserOdometry2.child_frame_id = "/velodyne";
@@ -93,24 +75,6 @@ public:
 		newKittiPointCloud = false;
 		newKittiPointLabel = false;
 		newKittiPointAll = false;
-
-        // laserOdometryTrans2.frame_id_ = "/camera_init";
-        // laserOdometryTrans2.child_frame_id_ = "/camera";
-
-        // map_2_camera_init_Trans.frame_id_ = "/map";
-        // map_2_camera_init_Trans.child_frame_id_ = "/camera_init";
-
-        // camera_2_base_link_Trans.frame_id_ = "/camera";
-        // camera_2_base_link_Trans.child_frame_id_ = "/base_link";
-
-        // for (int i = 0; i < 6; ++i)
-        // {
-        //     transformSum[i] = 0;
-        //     transformIncre[i] = 0;
-        //     transformMapped[i] = 0;
-        //     transformBefMapped[i] = 0;
-        //     transformAftMapped[i] = 0;
-        // }
     }
 
     void kittiCameraOdometryHandler(const nav_msgs::Odometry::ConstPtr& kittiCameraOdometryMsg) {
@@ -175,7 +139,7 @@ public:
         pcl::fromROSMsg(*kittiPointCloudMsg, *kittiPointCloudIn);
 
         newKittiPointCloud = true;
-        if (param_fusion)
+        if (param.fusion)
 		    mergePointAndLabel();
 	}
 
@@ -188,7 +152,7 @@ public:
 
 		newKittiPointLabel = true;
 
-        if (param_fusion)
+        if (param.fusion)
 		    mergePointAndLabel();
 	}
 
@@ -201,7 +165,7 @@ public:
 
 		newKittiPointAll = true;
 
-		if (!param_fusion) {
+		if (!param.fusion) {
 			splitPointAndLabel();
 		}
 	}
@@ -216,7 +180,7 @@ public:
 				for (size_t i = 0; i < sz; ++i) {
 					pcl::PointXYZI &pCloud = kittiPointCloudIn->points[i];
 					pcl::PointXYZL &pLabel = kittiPointLabelIn->points[i];
-					PointSemantic &pOut = kittiPointAllOut->points[i];
+					PointType &pOut = kittiPointAllOut->points[i];
 					pOut.x = pCloud.x;
 					pOut.y = pCloud.y;
 					pOut.z = pCloud.z;
@@ -249,7 +213,7 @@ public:
 		for (size_t i = 0; i < sz; ++i) {
 			pcl::PointXYZI &pCloud = kittiPointCloudOut->points[i];
 			pcl::PointXYZL &pLabel = kittiPointLabelOut->points[i];
-			PointSemantic &pAll = kittiPointAllIn->points[i];
+			PointType &pAll = kittiPointAllIn->points[i];
 
 			pCloud.x = pAll.x;
 			pCloud.y = pAll.y;

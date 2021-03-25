@@ -1,5 +1,7 @@
 <launch>
 
+    <rosparam command="load" file="$(find lego_loam)/config/sf_loam.yaml"/>
+
     <!--- Sim Time -->
     <param name="/use_sim_time" value="true" />
 
@@ -7,7 +9,7 @@
     <!--node pkg="rviz" type="rviz" name="rviz" args="-d $(find lego_loam)/launch/test.rviz"-->
 
     <!--- LeGO-LOAM -->
-    <node pkg="lego_loam" type="kittiProcess"       name="kittiProcess"     output="screen"/>
+    <!--node pkg="lego_loam" type="kittiProcess"       name="kittiProcess"     output="screen"-->
     <node pkg="lego_loam" type="imageProjection"    name="imageProjection"  output="screen"/>
     <node pkg="lego_loam" type="localMap"           name="localMap"         output="screen"/>
 

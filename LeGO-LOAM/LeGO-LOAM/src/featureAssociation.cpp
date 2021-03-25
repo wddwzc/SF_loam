@@ -33,11 +33,11 @@
 //      IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS). October 2018.
 
 #include "utility.h"
+#include "parameter.h"
 
 class FeatureAssociation{
 
 private:
-
 	ros::NodeHandle nh;
 
     ros::Subscriber subLaserCloud;
@@ -104,32 +104,56 @@ private:
     float imuAngularRotationXLast, imuAngularRotationYLast, imuAngularRotationZLast;
     float imuAngularFromStartX, imuAngularFromStartY, imuAngularFromStartZ;
 
-    double imuTime[imuQueLength];
-    float imuRoll[imuQueLength];
-    float imuPitch[imuQueLength];
-    float imuYaw[imuQueLength];
+    vector<double> imuTime;
+    vector<float> imuRoll;
+    vector<float> imuPitch;
+    vector<float> imuYaw;
 
-    float imuAccX[imuQueLength];
-    float imuAccY[imuQueLength];
-    float imuAccZ[imuQueLength];
+    vector<float> imuAccX;
+    vector<float> imuAccY;
+    vector<float> imuAccZ;
 
-    float imuVeloX[imuQueLength];
-    float imuVeloY[imuQueLength];
-    float imuVeloZ[imuQueLength];
+    vector<float> imuVeloX;
+    vector<float> imuVeloY;
+    vector<float> imuVeloZ;
 
-    float imuShiftX[imuQueLength];
-    float imuShiftY[imuQueLength];
-    float imuShiftZ[imuQueLength];
+    vector<float> imuShiftX;
+    vector<float> imuShiftY;
+    vector<float> imuShiftZ;
 
-    float imuAngularVeloX[imuQueLength];
-    float imuAngularVeloY[imuQueLength];
-    float imuAngularVeloZ[imuQueLength];
+    vector<float> imuAngularVeloX;
+    vector<float> imuAngularVeloY;
+    vector<float> imuAngularVeloZ;
 
-    float imuAngularRotationX[imuQueLength];
-    float imuAngularRotationY[imuQueLength];
-    float imuAngularRotationZ[imuQueLength];
+    vector<float> imuAngularRotationX;
+    vector<float> imuAngularRotationY;
+    vector<float> imuAngularRotationZ;
 
+    // 在构造函数里改成了vector存储
+    // double imuTime[param.imuQueLength];
+    // float imuRoll[param.imuQueLength];
+    // float imuPitch[param.imuQueLength];
+    // float imuYaw[param.imuQueLength];
 
+    // float imuAccX[param.imuQueLength];
+    // float imuAccY[param.imuQueLength];
+    // float imuAccZ[param.imuQueLength];
+
+    // float imuVeloX[param.imuQueLength];
+    // float imuVeloY[param.imuQueLength];
+    // float imuVeloZ[param.imuQueLength];
+
+    // float imuShiftX[param.imuQueLength];
+    // float imuShiftY[param.imuQueLength];
+    // float imuShiftZ[param.imuQueLength];
+
+    // float imuAngularVeloX[param.imuQueLength];
+    // float imuAngularVeloY[param.imuQueLength];
+    // float imuAngularVeloZ[param.imuQueLength];
+
+    // float imuAngularRotationX[param.imuQueLength];
+    // float imuAngularRotationY[param.imuQueLength];
+    // float imuAngularRotationZ[param.imuQueLength];
 
     ros::Publisher pubLaserCloudCornerLast;
     ros::Publisher pubLaserCloudSurfLast;
@@ -181,16 +205,18 @@ private:
 
     int frameCount;
 
+    ParamServer param;
+
 public:
 
     FeatureAssociation():
         nh("~")
-        {
+    {
 
         subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/segmented_cloud", 1, &FeatureAssociation::laserCloudHandler, this);
         subLaserCloudInfo = nh.subscribe<cloud_msgs::cloud_info>("/segmented_cloud_info", 1, &FeatureAssociation::laserCloudInfoHandler, this);
         subOutlierCloud = nh.subscribe<sensor_msgs::PointCloud2>("/outlier_cloud", 1, &FeatureAssociation::outlierCloudHandler, this);
-        subImu = nh.subscribe<sensor_msgs::Imu>(imuTopic, 50, &FeatureAssociation::imuHandler, this);
+        subImu = nh.subscribe<sensor_msgs::Imu>(param.imuDataTopic, 50, &FeatureAssociation::imuHandler, this);
 
         pubCornerPointsSharp = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_sharp", 1);
         pubCornerPointsLessSharp = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_less_sharp", 1);
@@ -207,20 +233,20 @@ public:
 
     void initializationValue()
     {
-        cloudCurvature = new float[N_SCAN*Horizon_SCAN];
-        cloudNeighborPicked = new int[N_SCAN*Horizon_SCAN];
-        cloudLabel = new int[N_SCAN*Horizon_SCAN];
+        cloudCurvature = new float[param.N_SCAN*param.Horizon_SCAN];
+        cloudNeighborPicked = new int[param.N_SCAN*param.Horizon_SCAN];
+        cloudLabel = new int[param.N_SCAN*param.Horizon_SCAN];
 
-        pointSelCornerInd = new int[N_SCAN*Horizon_SCAN];
-        pointSearchCornerInd1 = new float[N_SCAN*Horizon_SCAN];
-        pointSearchCornerInd2 = new float[N_SCAN*Horizon_SCAN];
+        pointSelCornerInd = new int[param.N_SCAN*param.Horizon_SCAN];
+        pointSearchCornerInd1 = new float[param.N_SCAN*param.Horizon_SCAN];
+        pointSearchCornerInd2 = new float[param.N_SCAN*param.Horizon_SCAN];
 
-        pointSelSurfInd = new int[N_SCAN*Horizon_SCAN];
-        pointSearchSurfInd1 = new float[N_SCAN*Horizon_SCAN];
-        pointSearchSurfInd2 = new float[N_SCAN*Horizon_SCAN];
-        pointSearchSurfInd3 = new float[N_SCAN*Horizon_SCAN];
+        pointSelSurfInd = new int[param.N_SCAN*param.Horizon_SCAN];
+        pointSearchSurfInd1 = new float[param.N_SCAN*param.Horizon_SCAN];
+        pointSearchSurfInd2 = new float[param.N_SCAN*param.Horizon_SCAN];
+        pointSearchSurfInd3 = new float[param.N_SCAN*param.Horizon_SCAN];
 
-        cloudSmoothness.resize(N_SCAN*Horizon_SCAN);
+        cloudSmoothness.resize(param.N_SCAN*param.Horizon_SCAN);
 
         downSizeFilter.setLeafSize(0.2, 0.2, 0.2);
 
@@ -269,16 +295,41 @@ public:
         imuAngularRotationXLast = 0; imuAngularRotationYLast = 0; imuAngularRotationZLast = 0;
         imuAngularFromStartX = 0; imuAngularFromStartY = 0; imuAngularFromStartZ = 0;
 
-        for (int i = 0; i < imuQueLength; ++i)
-        {
-            imuTime[i] = 0;
-            imuRoll[i] = 0; imuPitch[i] = 0; imuYaw[i] = 0;
-            imuAccX[i] = 0; imuAccY[i] = 0; imuAccZ[i] = 0;
-            imuVeloX[i] = 0; imuVeloY[i] = 0; imuVeloZ[i] = 0;
-            imuShiftX[i] = 0; imuShiftY[i] = 0; imuShiftZ[i] = 0;
-            imuAngularVeloX[i] = 0; imuAngularVeloY[i] = 0; imuAngularVeloZ[i] = 0;
-            imuAngularRotationX[i] = 0; imuAngularRotationY[i] = 0; imuAngularRotationZ[i] = 0;
-        }
+
+        imuTime.assign(param.imuQueLength, 0);
+        imuRoll.assign(param.imuQueLength, 0);
+        imuPitch.assign(param.imuQueLength, 0);
+        imuYaw.assign(param.imuQueLength, 0);
+
+        imuAccX.assign(param.imuQueLength, 0);
+        imuAccY.assign(param.imuQueLength, 0);
+        imuAccZ.assign(param.imuQueLength, 0);
+
+        imuVeloX.assign(param.imuQueLength, 0);
+        imuVeloY.assign(param.imuQueLength, 0);
+        imuVeloZ.assign(param.imuQueLength, 0);
+
+        imuShiftX.assign(param.imuQueLength, 0);
+        imuShiftY.assign(param.imuQueLength, 0);
+        imuShiftZ.assign(param.imuQueLength, 0);
+
+        imuAngularVeloX.assign(param.imuQueLength, 0);
+        imuAngularVeloY.assign(param.imuQueLength, 0);
+        imuAngularVeloZ.assign(param.imuQueLength, 0);
+
+        imuAngularRotationX.assign(param.imuQueLength, 0);
+        imuAngularRotationY.assign(param.imuQueLength, 0);
+        imuAngularRotationZ.assign(param.imuQueLength, 0);
+        // for (int i = 0; i < param.imuQueLength; ++i)
+        // {
+        //     imuTime[i] = 0;
+        //     imuRoll[i] = 0; imuPitch[i] = 0; imuYaw[i] = 0;
+        //     imuAccX[i] = 0; imuAccY[i] = 0; imuAccZ[i] = 0;
+        //     imuVeloX[i] = 0; imuVeloY[i] = 0; imuVeloZ[i] = 0;
+        //     imuShiftX[i] = 0; imuShiftY[i] = 0; imuShiftZ[i] = 0;
+        //     imuAngularVeloX[i] = 0; imuAngularVeloY[i] = 0; imuAngularVeloZ[i] = 0;
+        //     imuAngularRotationX[i] = 0; imuAngularRotationY[i] = 0; imuAngularRotationZ[i] = 0;
+        // }
 
 
         skipFrameNum = 1;
@@ -410,9 +461,9 @@ public:
         accY = y2;
         accZ = -sin(yaw) * x2 + cos(yaw) * z2;
 
-        int imuPointerBack = (imuPointerLast + imuQueLength - 1) % imuQueLength;
+        int imuPointerBack = (imuPointerLast + param.imuQueLength - 1) % param.imuQueLength;
         double timeDiff = imuTime[imuPointerLast] - imuTime[imuPointerBack];
-        if (timeDiff < scanPeriod) {
+        if (timeDiff < param.scanPeriod) {
 
             imuShiftX[imuPointerLast] = imuShiftX[imuPointerBack] + imuVeloX[imuPointerBack] * timeDiff + accX * timeDiff * timeDiff / 2;
             imuShiftY[imuPointerLast] = imuShiftY[imuPointerBack] + imuVeloY[imuPointerBack] * timeDiff + accY * timeDiff * timeDiff / 2;
@@ -439,7 +490,7 @@ public:
         float accY = imuIn->linear_acceleration.z - cos(roll) * cos(pitch) * 9.81;
         float accZ = imuIn->linear_acceleration.x + sin(pitch) * 9.81;
 
-        imuPointerLast = (imuPointerLast + 1) % imuQueLength;
+        imuPointerLast = (imuPointerLast + 1) % param.imuQueLength;
 
         imuTime[imuPointerLast] = imuIn->header.stamp.toSec();
 
@@ -520,16 +571,16 @@ public:
             }
 
             float relTime = (ori - segInfo.startOrientation) / segInfo.orientationDiff;
-            point.intensity = int(segmentedCloud->points[i].intensity) + scanPeriod * relTime;
+            point.intensity = int(segmentedCloud->points[i].intensity) + param.scanPeriod * relTime;
 
             if (imuPointerLast >= 0) {
-                float pointTime = relTime * scanPeriod;
+                float pointTime = relTime * param.scanPeriod;
                 imuPointerFront = imuPointerLastIteration;
                 while (imuPointerFront != imuPointerLast) {
                     if (timeScanCur + pointTime < imuTime[imuPointerFront]) {
                         break;
                     }
-                    imuPointerFront = (imuPointerFront + 1) % imuQueLength;
+                    imuPointerFront = (imuPointerFront + 1) % param.imuQueLength;
                 }
 
                 if (timeScanCur + pointTime > imuTime[imuPointerFront]) {
@@ -545,7 +596,7 @@ public:
                     imuShiftYCur = imuShiftY[imuPointerFront];
                     imuShiftZCur = imuShiftZ[imuPointerFront];   
                 } else {
-                    int imuPointerBack = (imuPointerFront + imuQueLength - 1) % imuQueLength;
+                    int imuPointerBack = (imuPointerFront + param.imuQueLength - 1) % param.imuQueLength;
                     float ratioFront = (timeScanCur + pointTime - imuTime[imuPointerBack]) 
                                                      / (imuTime[imuPointerFront] - imuTime[imuPointerBack]);
                     float ratioBack = (imuTime[imuPointerFront] - timeScanCur - pointTime) 
@@ -588,7 +639,7 @@ public:
                         imuAngularRotationYCur = imuAngularRotationY[imuPointerFront];
                         imuAngularRotationZCur = imuAngularRotationZ[imuPointerFront];
                     }else{
-                        int imuPointerBack = (imuPointerFront + imuQueLength - 1) % imuQueLength;
+                        int imuPointerBack = (imuPointerFront + param.imuQueLength - 1) % param.imuQueLength;
                         float ratioFront = (timeScanCur + pointTime - imuTime[imuPointerBack]) 
                                                          / (imuTime[imuPointerFront] - imuTime[imuPointerBack]);
                         float ratioBack = (imuTime[imuPointerFront] - timeScanCur - pointTime) 
@@ -684,7 +735,7 @@ public:
         surfPointsFlat->clear();
         surfPointsLessFlat->clear();
 
-        for (int i = 0; i < N_SCAN; i++) {
+        for (int i = 0; i < param.N_SCAN; i++) {
 
             surfPointsLessFlatScan->clear();
 
@@ -702,7 +753,7 @@ public:
                 for (int k = ep; k >= sp; k--) {
                     int ind = cloudSmoothness[k].ind;
                     if (cloudNeighborPicked[ind] == 0 &&
-                        cloudCurvature[ind] > edgeThreshold &&
+                        cloudCurvature[ind] > param.edgeThreshold &&
                         segInfo.segmentedCloudGroundFlag[ind] == false) {
                     
                         largestPickedNum++;
@@ -737,7 +788,7 @@ public:
                 for (int k = sp; k <= ep; k++) {
                     int ind = cloudSmoothness[k].ind;
                     if (cloudNeighborPicked[ind] == 0 &&
-                        cloudCurvature[ind] < surfThreshold &&
+                        cloudCurvature[ind] < param.surfThreshold &&
                         segInfo.segmentedCloudGroundFlag[ind] == true) {
 
                         cloudLabel[ind] = -1;
@@ -1054,11 +1105,11 @@ public:
                 kdtreeCornerLast->nearestKSearch(pointSel, 1, pointSearchInd, pointSearchSqDis);
                 int closestPointInd = -1, minPointInd2 = -1;
                 
-                if (pointSearchSqDis[0] < nearestFeatureSearchSqDist) {
+                if (pointSearchSqDis[0] < param.nearestFeatureSearchSqDist) {
                     closestPointInd = pointSearchInd[0];
                     int closestPointScan = int(laserCloudCornerLast->points[closestPointInd].intensity);
 
-                    float pointSqDis, minPointSqDis2 = nearestFeatureSearchSqDist;
+                    float pointSqDis, minPointSqDis2 = param.nearestFeatureSearchSqDist;
                     for (int j = closestPointInd + 1; j < cornerPointsSharpNum; j++) {
                         if (int(laserCloudCornerLast->points[j].intensity) > closestPointScan + 2.5) {
                             break;
@@ -1165,11 +1216,11 @@ public:
                 kdtreeSurfLast->nearestKSearch(pointSel, 1, pointSearchInd, pointSearchSqDis);
                 int closestPointInd = -1, minPointInd2 = -1, minPointInd3 = -1;
 
-                if (pointSearchSqDis[0] < nearestFeatureSearchSqDist) {
+                if (pointSearchSqDis[0] < param.nearestFeatureSearchSqDist) {
                     closestPointInd = pointSearchInd[0];
                     int closestPointScan = int(laserCloudSurfLast->points[closestPointInd].intensity);
 
-                    float pointSqDis, minPointSqDis2 = nearestFeatureSearchSqDist, minPointSqDis3 = nearestFeatureSearchSqDist;
+                    float pointSqDis, minPointSqDis2 = param.nearestFeatureSearchSqDist, minPointSqDis3 = param.nearestFeatureSearchSqDist;
                     for (int j = closestPointInd + 1; j < surfPointsFlatNum; j++) {
                         if (int(laserCloudSurfLast->points[j].intensity) > closestPointScan + 2.5) {
                             break;
@@ -1657,9 +1708,9 @@ public:
         }
         
         if (imuVeloFromStartX != 0 || imuVeloFromStartY != 0 || imuVeloFromStartZ != 0){
-            transformCur[3] -= imuVeloFromStartX * scanPeriod;
-            transformCur[4] -= imuVeloFromStartY * scanPeriod;
-            transformCur[5] -= imuVeloFromStartZ * scanPeriod;
+            transformCur[3] -= imuVeloFromStartX * param.scanPeriod;
+            transformCur[4] -= imuVeloFromStartY * param.scanPeriod;
+            transformCur[5] -= imuVeloFromStartZ * param.scanPeriod;
         }
     }
 

@@ -44,7 +44,7 @@
 #include <boost/shared_ptr.hpp>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
-#include "nanoflann.hpp"
+#include "extra_tools/nanoflann.hpp"
 
 namespace nanoflann
 {
@@ -54,7 +54,7 @@ namespace nanoflann
 template <typename PointT>
 class KdTreeFLANN
 {
- public:
+public:
 
   typedef boost::shared_ptr<KdTreeFLANN<PointT> > Ptr;
   typedef boost::shared_ptr<const KdTreeFLANN<PointT> > ConstPtr;
@@ -84,7 +84,7 @@ class KdTreeFLANN
   int radiusSearch (const PointT &point, double radius, std::vector<int> &k_indices,
                    std::vector<float> &k_sqr_distances) const;
 
- private:
+private:
 
   nanoflann::SearchParams _params;
 

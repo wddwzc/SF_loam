@@ -1,6 +1,8 @@
 #ifndef DBSCAN_H
 #define DBSCAN_H
 
+#include "extra_tools/debug_utility.h"
+#include "extra_tools/nanoflann_pcl.h"
 #include <pcl/point_types.h>
 
 #define UN_PROCESSED 0
@@ -14,6 +16,8 @@ inline bool comparePointClusters (const pcl::PointIndices &a, const pcl::PointIn
 template <typename PointT>
 class DBSCANKdtreeCluster {
 public:
+    bool use_nano;
+
     typedef typename pcl::PointCloud<PointT>::Ptr PointCloudPtr;
     typedef typename pcl::search::KdTree<PointT>::Ptr KdTreePtr;
     virtual void setInputCloud(PointCloudPtr cloud) {
@@ -22,6 +26,12 @@ public:
 
     void setSearchMethod(KdTreePtr tree) {
         search_method_ = tree;
+        use_nano = false;
+    }
+
+    void setSearchMethodNano(boost::shared_ptr<nanoflann::KdTreeFLANN<PointT>> tree) {
+        search_method_nano_ = tree;
+        use_nano = true;
     }
 
     void extract(std::vector<pcl::PointIndices>& cluster_indices) {
@@ -35,12 +45,15 @@ public:
             PointT &p1 = input_cloud_->points[i];
             double range1 = sqrt(p1.x * p1.x + p1.y * p1.y + p1.z * p1.z);
             double new_eps_1 = eps_ * range1 / 5.0;
+            // double new_eps_1 = eps_;
             
             
             if (types[i] == PROCESSED) {
                 continue;
             }
-            int nn_size = radiusSearch(i, new_eps_1, nn_indices, nn_distances);
+            int nn_size;
+            if (use_nano)   nn_size = radiusSearchNano(p1, new_eps_1, nn_indices, nn_distances);
+            else    nn_size = radiusSearch(i, new_eps_1, nn_indices, nn_distances);
             // 如果密度过小，暂时先视为噪声
             if (nn_size < minPts_) {
                 is_noise[i] = true;
@@ -72,6 +85,7 @@ public:
                 PointT &p2 = input_cloud_->points[cloud_index];
                 double range2 = sqrt(p2.x * p2.x + p2.y * p2.y + p2.z * p2.z);
                 double new_eps_2 = eps_ * range2 / 5.0;
+                // double new_eps_2 = eps_;
 
 
 
@@ -84,7 +98,8 @@ public:
                 }
 
                 // 如果是 un_process 或 processing，才搜索邻域
-                nn_size = radiusSearch(cloud_index, new_eps_2, nn_indices, nn_distances);
+                if (use_nano)   nn_size = radiusSearchNano(p2, new_eps_2, nn_indices, nn_distances);
+                else    nn_size = radiusSearch(cloud_index, new_eps_2, nn_indices, nn_distances);
                 // 发现了新的seed，把它的邻域加入序列
                 if (nn_size >= minPts_) {
                     for (int j = 0; j < nn_size; j++) {
@@ -143,6 +158,7 @@ protected:
     int max_pts_per_cluster_ {std::numeric_limits<int>::max()};
 
     KdTreePtr search_method_;
+    boost::shared_ptr<nanoflann::KdTreeFLANN<PointT>> search_method_nano_;
 
     // KD-TREE搜索，log(n)
     virtual int radiusSearch (
@@ -150,6 +166,12 @@ protected:
         std::vector<float> &k_sqr_distances) const 
     {
         return this->search_method_->radiusSearch(index, radius, k_indices, k_sqr_distances);
+    }
+
+    virtual int radiusSearchNano(PointT &point, double radius, std::vector<int> &k_indices,
+                                std::vector<float> &k_sqr_distances)
+    {
+        return this->search_method_nano_->radiusSearch(point, radius, k_indices, k_sqr_distances);
     }
 
 }; // class DBSCANCluster

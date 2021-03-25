@@ -1,30 +1,52 @@
 kittiProcess:
-	fusion: false	# true 则合并为all，false 则拆分为 xyzi 和 xyzl
+    fusion: false   # true 则合并为all，false 则拆分为 xyzi 和 xyzl
+    laser_topic: "/kitti/velo/label"
 
 
 sf_loam:
-    semantic: true  # true for type PointXYZI, false for type PointXYZIL
+    semantic: true  # true for type PointXYZIL, false for type PointXYZI
+    semantic_point_cloud_topic: "/kitti/velo/pointall"
+    point_cloud_topic: "/kitti/velo/pointxyzi"
+    imu_data_topic: "/imu/data"
+    odometry_topic: "/kitti/velodyne_poses"
+    imu_que_length: 200
+
 
     imageProjection:
         use_cloud_ring: false
+
+        sensor_minimum_range: 1.0   # filter the point inside the range
+        sensor_mount_angle: 0.0
+        sensor_to_ground: 1.4    # the distance from sensor to ground
+        filter_ground_noise: true  # filter the negative plane point
+        use_simple_method: true    # use a simple or flexible method when filter_ground_noise is true
+
+        segment_theta: 60.0      # decrese this value may improve accuracy
         segment_valid_point_num: 5
         segment_valid_line_num: 3
-		segment_theta: 60.0                      # decrese this value may improve accuracy
-		
-		debug_publish: false
-		debug_cluster: false
+        segment_alpha_X: 1.0
+        segment_alpha_Y: 1.0
+        
+        debug_publish: false
+        debug_cluster: false
+        debug_timecost: false
+
 
     featureAssociation:
         edge_threshold: 0.1
         surf_threshold: 0.1
-        nearest_feature_search_distance: 5
+        nearest_feature_search_square_distance: 25
+
 
     mapping:
-        enable_loop_closure: false
+        mapping_process_interval: 0.3
+
+        enable_loop_closure: true
+        sc_source_data: "raw"                 # "local_map"   "no_movable"   "down_sampled"
         mapping_frequency_divider: 5
 
         surrounding_keyframe_search_radius: 50.0   # key frame that is within n meters from current pose will be
-        											# considered for scan-to-map optimization (when loop closure disabled)
+                                                    # considered for scan-to-map optimization (when loop closure disabled)
         surrounding_keyframe_search_num: 50        # submap size (when loop closure enabled)
 
         history_keyframe_search_radius: 7.0        # key frame that is within n meters from current pose will be considerd for loop closure
@@ -33,29 +55,108 @@ sf_loam:
 
         global_map_visualization_search_radius: 500.0 # key frames with in n meters will be visualized
 
+        file_directory: "/tmp/"     # Save pcd
+
+        debug_loopclosure: false
+
+        
+
     transformFusion:
         lsakdjflkasjdf: false
 
-
 # 激光参数
 laser:
-    VLP16:
-        num_vertical_scans: 16
-        num_horizontal_scans: 1800
-        ground_scan_index: 7
-        ang_vertical_bottom: -15            # degrees
-        ang_vertical_top: 15                # degrees
-        scan_period: 0.1                    # seconds
-    
-    VLP64:
-        num_vertical_scans: 64
-        num_horizontal_scans: 2250
-        ground_scan_index: 50
-        ang_vertical_res: 0.472             # degrees
-        ang_horizontal_res: 0.16            # degrees
-        ang_vertical_bottom: 24.9           # degrees
-        ang_vertical_top: 2.0
-        scan_period: 0.1                    # seconds
+    is_vlp64: false
 
+    # VLP16
+    # num_vertical_scans: 16
+    # num_horizontal_scans: 1800
+    # ang_vertical_res: 2.0               # degrees
+    # ang_horizontal_res: 0.2             # degrees
+    # ang_vertical_bottom: 15.1           # degrees
+    # ang_vertical_top: 15                # degrees
+    # ground_scan_index: 7
+    # scan_period: 0.1                    # seconds
+    
+    # VLP64
+    num_vertical_scans: 64
+    num_horizontal_scans: 2250
+    ang_vertical_res: 0.472             # degrees
+    ang_horizontal_res: 0.16            # degrees
+    ang_vertical_bottom: 24.9           # degrees
+    ang_vertical_top: 2.0
+    ground_scan_index: 50
+    scan_period: 0.1                    # seconds
+
+    # HDL-32E
+    # extern const int N_SCAN = 32;
+    # extern const int Horizon_SCAN = 1800;
+    # extern const float ang_res_x = 360.0/float(Horizon_SCAN);
+    # extern const float ang_res_y = 41.33/float(N_SCAN-1);
+    # extern const float ang_bottom = 30.67;
+    # extern const int groundScanInd = 20;
+
+    # VLS-128
+    # extern const int N_SCAN = 128;
+    # extern const int Horizon_SCAN = 1800;
+    # extern const float ang_res_x = 0.2;
+    # extern const float ang_res_y = 0.3;
+    # extern const float ang_bottom = 25.0;
+    # extern const int groundScanInd = 10;
+
+    # Ouster users may need to uncomment line 159 in imageProjection.cpp
+    # Usage of Ouster imu data is not fully supported yet (LeGO-LOAM needs 9-DOF IMU), please just publish point cloud data
+    # Ouster OS1-16
+    # num_vertical_scans: 16
+    # num_horizontal_scans: 1024
+    # ang_vertical_res: 0.472
+    # ang_horizontal_res: 0.16
+    # ang_vertical_bottom: 24.9
+    # ang_vertical_top: 2.0
+    # ground_scan_index: 50
+    # scan_period: 0.1
+
+    # extern const int N_SCAN = 16;
+    # extern const int Horizon_SCAN = 1024;
+    # extern const float ang_res_x = 360.0/float(Horizon_SCAN);
+    # extern const float ang_res_y = 33.2/float(N_SCAN-1);
+    # extern const float ang_bottom = 16.6+0.1;
+    # extern const int groundScanInd = 7;
+
+    # # Ouster OS1-64
+    # extern const int N_SCAN = 64;
+    # extern const int Horizon_SCAN = 1024;
+    # extern const float ang_res_x = 360.0/float(Horizon_SCAN);
+    # extern const float ang_res_y = 33.2/float(N_SCAN-1);
+    # extern const float ang_bottom = 16.6+0.1;
+    # extern const int groundScanInd = 15;
+
+
+local_map:
+    local_map_radius: 70.0
+
+    use_pcl_segmentation: false
+    extract_plane_threashold: 0.1
+    voxel_leaf_size: 0.1
+    octomap_leaf_size: 0.1
+    local_map_radius: 40.0
+
+    # DBSCAN
+    cluster_method: "NANO_DBSCAN"   # "DBSCAN"  "EUCLIDEAN"  "CVC"
+    radius_growing: 0.15
+    core_min_points: 5
+    min_cluster_size: 50
+    max_cluster_size: 25000
+
+    box_type_simple: true
+
+    dynamic_segment_search_radius: 3.0
+
+    debug_generator: true
+    debug_transform: false
+    debug_cluster: false
+    debug_publish: false
+
+    debug_time_cost: true
 
 
