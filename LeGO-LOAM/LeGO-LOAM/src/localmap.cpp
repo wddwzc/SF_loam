@@ -304,13 +304,13 @@ public:
         }
 
         pcl::KdTreeFLANN<PointType> kdtreeSurroundSegments;
-        kdtreeSurroundSegments->setInputCloud(mapSegmentsCenters);
+        kdtreeSurroundSegments.setInputCloud(mapSegmentsCenters);
         for (auto &new_seg : new_segments) {
             vector<int> centroidSearchInd;
             vector<float> centroidSearchSqDis;
-            kdtreeSurroundingKeyPoses->radiusSearch(new_seg.centroid, (double)param.dynamicSegmentSearchRadius, centroidSearchInd, centroidSearchSqDis, 0);
+            kdtreeSurroundSegments.radiusSearch(new_seg.centroid, (double)param.dynamicSegmentSearchRadius, centroidSearchInd, centroidSearchSqDis, 0);
 
-            for ()
+            // for ()
             
 
         }

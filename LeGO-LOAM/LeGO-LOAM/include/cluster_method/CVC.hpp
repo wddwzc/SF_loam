@@ -55,13 +55,13 @@ public:
    float deltaR {0.35};
    float deltaP {1.2};
    int ASize{0};
-   int RSize(0);
-   int PSize(0);
+   int RSize{0};
+   int PSize{0};
    int minPointsNum{10};
 
-   pcl::PointCloud<PointT>::Ptr pointCloudPtr;
+   typename pcl::PointCloud<PointT>::Ptr pointCloudPtr;
 
-   void extrat(std::vector<pcl::PointIndices> &indices) {
+   void extract(std::vector<pcl::PointIndices> &indices) {
       vector<PointAPR> papr;
       calculateAPR(papr);
       unordered_map<int, Voxel> hvoxel;
@@ -238,7 +238,7 @@ public:
       minPointsNum = minpts;
    }
 
-   void setInputCloud(pcl::PointCloud<PointT>::Ptr cloud) {
+   void setInputCloud(typename pcl::PointCloud<PointT>::Ptr cloud) {
       pointCloudPtr = cloud;
    }
 
@@ -265,7 +265,7 @@ private:
    }
 
    void find_neighbors(int polar, int range, int azimuth, vector<int>& neighborindex) {
-      for (int tempA = azimuth - 1; z <= azimuth + 1; z++){
+      for (int tempA = azimuth - 1; tempA <= azimuth + 1; tempA++){
          if (tempA < 0 || tempA > round((maxazimuth - minazimuth) * 180 / PI_M / deltaA)){
             continue;
          }
