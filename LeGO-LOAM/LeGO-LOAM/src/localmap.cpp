@@ -141,7 +141,7 @@ public:
             (!param.usePclSegmentation && newGroundCloudLast && newSegmentedCloudLast && newLaserOdomLast &&
             (timeGroundCloudLast - timeSegmentedCloudLast) < 0.005 && (timeGroundCloudLast - timeLaserOdomLast) < 0.005) )
         {
-            if (param.debugOctomapGenerator) cout << "# generate local map ######";
+            if (param.debugOctomapGenerator) cout << "# generate local map ######" << endl;
             TimeRecorder generatorTime;
             generatorTime.recordStart();
 

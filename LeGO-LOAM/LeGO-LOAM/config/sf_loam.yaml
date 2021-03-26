@@ -139,10 +139,9 @@ local_map:
     extract_plane_threashold: 0.1
     voxel_leaf_size: 0.1
     octomap_leaf_size: 0.1
-    local_map_radius: 40.0
 
     # DBSCAN
-    cluster_method: "NANO_DBSCAN"   # "DBSCAN"  "EUCLIDEAN"  "CVC"
+    cluster_method: "CVC"   # "DBSCAN"  "NANO_DBSCAN"  "EUCLIDEAN"  "CVC"
     radius_growing: 0.15
     core_min_points: 5
     min_cluster_size: 50

@@ -113,7 +113,7 @@ void visualizeBox(vector<Segment> &segments, ros::Publisher &pub,
             boundingBox.color.b = colors_map_tran[segment.semantic][2];
             boundingBox.color.a = 0.5;
 
-            boundingBox.lifetime = ros::Duration(0.5);
+            // boundingBox.lifetime = ros::Duration(1);
             boundingBoxArray.markers.push_back(boundingBox);
         }
 

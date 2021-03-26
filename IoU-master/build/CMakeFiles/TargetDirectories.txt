@@ -1,0 +1,3 @@
+/home/wzc/Data/SynologyDrive/开源代码/语义分割/IoU-master/build/CMakeFiles/rebuild_cache.dir
+/home/wzc/Data/SynologyDrive/开源代码/语义分割/IoU-master/build/CMakeFiles/demo.dir
+/home/wzc/Data/SynologyDrive/开源代码/语义分割/IoU-master/build/CMakeFiles/edit_cache.dir

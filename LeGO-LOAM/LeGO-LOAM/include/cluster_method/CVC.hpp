@@ -38,7 +38,7 @@ struct Voxel{
 };
 
 bool compare_cluster(pair<int,int> a, pair<int,int> b){
-    return a.second > b.second;
+   return a.second > b.second;
 } // 升序
 
 template<typename PointT>
@@ -62,13 +62,17 @@ public:
    typename pcl::PointCloud<PointT>::Ptr pointCloudPtr;
 
    void extract(std::vector<pcl::PointIndices> &indices) {
+      // 所有点的曲面体素索引
       vector<PointAPR> papr;
       calculateAPR(papr);
+      // 点到索引的映射关系，voxel中存储id和包含的点索引
       unordered_map<int, Voxel> hvoxel;
       build_hash_table(papr, hvoxel);
+      // 每个曲面体素所对应的类别
       vector<int> cluster_index = CVC(hvoxel, papr);
       vector<int> cluster_id;
-      most_frequent_value(cluster_index, cluster_id);
+      // most_frequent_value(cluster_index, cluster_id);
+      get_segment_index(cluster_index, indices);
    }
 
    void calculateAPR(vector<PointAPR>& vapr){
@@ -113,7 +117,7 @@ public:
             ai.push_back(azimuth_index);
             unordered_map<int, Voxel>::iterator it_find;
             it_find = map_out.find(voxel_index);
-            if (it_find != map_out.end()){
+            if (it_find != map_out.end()) {
                it_find->second.index.push_back(i);
             }
             else {
@@ -127,12 +131,13 @@ public:
       auto maxPosition = max_element(ai.begin(), ai.end());
       auto maxPosition1 = max_element(ri.begin(), ri.end());
       auto maxPosition2 = max_element(pi.begin(), pi.end());
-      cout<< *maxPosition << " " << *maxPosition1 << " " << *maxPosition2 << endl;
+      // cout<< *maxPosition << " " << *maxPosition1 << " " << *maxPosition2 << endl;
    }
 
+   // 根据建立好的
    vector<int> CVC(unordered_map<int, Voxel> &map_in, const vector<PointAPR>& vapr){
       int current_cluster = 0;
-      cout << "CVC" << endl;
+      // cout << "CVC" << endl;
       vector<int> cluster_indices = vector<int>(vapr.size(), -1);
 
       for(int i = 0; i < vapr.size(); ++i){
@@ -154,10 +159,8 @@ public:
             vector<int> neighborid;
             find_neighbors(polar_index, range_index, azimuth_index, neighborid);
             for (int k = 0; k < neighborid.size(); ++k){
-                  
                it_find2 = map_in.find(neighborid[k]);
-
-               if (it_find2 != map_in.end()){
+               if (it_find2 != map_in.end()) {
                   for(int j = 0 ; j < it_find2->second.index.size(); ++j){
                      neightbors.push_back(it_find2->second.index[j]);
                   }
@@ -191,7 +194,7 @@ public:
          if (cluster_indices[i] == -1) {
             current_cluster++;
             cluster_indices[i] = current_cluster;
-            for(int s =0 ; s < neightbors.size(); ++s) {             
+            for(int s = 0 ; s < neightbors.size(); ++s) {             
                   cluster_indices[neightbors[s]] = current_cluster;
             }
          }
@@ -220,6 +223,25 @@ public:
       }
 
       return true;
+   }
+
+   void get_segment_index(vector<int> &cluster_index, std::vector<pcl::PointIndices> &indices) {
+      unordered_map<int, vector<int>> segment_index;
+      for (int i = 0; i < cluster_index.size(); i++) {
+         segment_index[cluster_index[i]].push_back(i);
+      }
+
+      for (auto &segment : segment_index) {
+         size_t sz = segment.second.size();
+         if (sz > minPointsNum) {
+            pcl::PointIndices point_indices;
+            point_indices.indices.reserve(sz);
+            for (auto &indices : segment.second) {
+               point_indices.indices.push_back(indices);
+            }
+            indices.push_back(point_indices);
+         }
+      }
    }
 
    void setDeltaAzimuth(float newDeltaAzimuth) {
