@@ -84,6 +84,7 @@ namespace IOU
         inline double operator*(const Vec2 &p) const { return x * p.x + y * p.y; }
 
         inline double cmul(const Vec2 &p) const { return x * p.y - y * p.x; }
+        // 叉乘
         inline double operator^(const Vec2 &p) const { return x * p.y - y * p.x; }
 
         inline double norm() const { return sqrt(x*x + y*y); }
@@ -203,16 +204,22 @@ namespace IOU
 
 
     // For any convex polygon
-    double areaEx(const Vertexes &C)
+    // 计算 Vertexes（样例中含4个二维点）所定义的图形面积
+    double areaEx(const Vertexes &C);
     WiseType whichWiseEx(const Vertexes &C);
+    // 检测有效性，排序
     void beInSomeWiseEx(Vertexes &C, const WiseType wiseType);
     LocPosition locationEx(const Vertexes &C, const Point &p);
+    // 计算 line 和 C所定义的多边形的交点
     int interPtsEx(const Vertexes &C, const Line &line, Vertexes &pts);
 
 
     // For any convex polygon
+    // 找到 C1 和 C2 的交点
     int findInterPointsEx(const Vertexes &C1, const Vertexes &C2, Vertexes &vert);
+    // 找到 C1 和 C2 互相包含的点
     int findInnerPointsEx(const Vertexes &C1, const Vertexes &C2, Vertexes &vert);
+    // 计算 C1 和 C2 相交的面积
     double areaIntersectionEx(const Vertexes &C1, const Vertexes &C2);
     double areaUnionEx(const Vertexes &C1, const Vertexes &C2);
     double iouEx(const Vertexes &C1, const Vertexes &C2);
@@ -372,6 +379,7 @@ namespace IOU
                 const Point &p2 = C.at(i + 1);
                 Point p01 = p1 - p0;
                 Point p02 = p2 - p0;
+                // p1 p2 p0 三角形面积
                 sArea += abs(p01^p02)*0.5;
             }
         }

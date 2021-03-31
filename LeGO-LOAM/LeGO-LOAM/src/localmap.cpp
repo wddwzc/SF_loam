@@ -1,6 +1,7 @@
 #include "utility.h"
 #include "parameter.h"
 #include "extra_tools/debug_utility.h"
+#include "extra_tools/iou.hpp"
 #include "cluster_method/segment.h"
 #include "cluster_method/cluster.hpp"
 
@@ -21,6 +22,7 @@ private:
     ros::Publisher pubLocalMap;
     ros::Publisher pubGroundCloud;
     ros::Publisher pubNoGroundCloud;
+    ros::Publisher pubSegmentCentroids;
     ros::Publisher pubBoundingBox;
     ros::Subscriber subPointCloudAll;
     ros::Subscriber subGroundCloud;
@@ -57,6 +59,7 @@ public:
         pubLocalMap = nh.advertise<sensor_msgs::PointCloud2>("/octomap/localmap", 2);
         pubGroundCloud = nh.advertise<sensor_msgs::PointCloud2>("/octomap/ground_cloud", 2);
         pubNoGroundCloud = nh.advertise<sensor_msgs::PointCloud2>("/octomap/no_ground_cloud", 2);
+        pubSegmentCentroids = nh.advertise<sensor_msgs::PointCloud2>("/octomap/segment_centroids", 2);
         pubBoundingBox = nh.advertise<visualization_msgs::MarkerArray>("/octomap/bounding_box", 2);
         subPointCloudAll = nh.subscribe<sensor_msgs::PointCloud2>("/kitti/velo/pointall", 2, &LocalMap::pointCloudAllHandler, this);
         subGroundCloud = nh.subscribe<sensor_msgs::PointCloud2>("/ground_cloud", 2, &LocalMap::groundCloudHandler, this);
@@ -183,15 +186,18 @@ public:
                 if (param.debugOctomapGenerator)  cout << " ---> " << noGroundCloud->points.size() << endl;
             }            
 
-
             vector<Segment> new_segments;
             Cluster cluster;
             cluster.geometricSegmentation(param, noGroundCloud, new_segments);
             // removeDynamicSegment(new_segments);
-
+            
+            
 
             *localMapCloud += *groundCloud;
-            *localMapCloud += *noGroundCloud;
+            // *localMapCloud += *noGroundCloud;
+            for (auto &seg : mapSegments) {
+                *localMapCloud += seg.segmentCloud;
+            }
             pcl::VoxelGrid<PointType> local_filter;
             local_filter.setLeafSize(param.voxelLeafSize, param.voxelLeafSize, param.voxelLeafSize);  // default: 0.1
             local_filter.setInputCloud(localMapCloud);
@@ -204,6 +210,7 @@ public:
             
             visualizeCloudRGB(groundCloud, pubGroundCloud, currentHeader.stamp, "/local_map");
             visualizeCloudRGB(noGroundCloud, pubNoGroundCloud, currentHeader.stamp, "/local_map");
+            visualizeCloudRGB(mapSegmentsCenters, pubSegmentCentroids, currentHeader.stamp, "/local_map");
             visualizeCloudRGB(localMapCloud, pubLocalMap, currentHeader.stamp, "/local_map");
             visualizeBox(new_segments, pubBoundingBox, currentHeader.stamp, "/local_map");
 
@@ -308,13 +315,68 @@ public:
         for (auto &new_seg : new_segments) {
             vector<int> centroidSearchInd;
             vector<float> centroidSearchSqDis;
-            kdtreeSurroundSegments.radiusSearch(new_seg.centroid, (double)param.dynamicSegmentSearchRadius, centroidSearchInd, centroidSearchSqDis, 0);
-
-            // for ()
-            
-
+            kdtreeSurroundSegments.radiusSearch(new_seg.boxCenter, (double)param.dynamicSegmentSearchRadius,
+                                                    centroidSearchInd, centroidSearchSqDis, 0);
+            for (size_t i = 0; i < centroidSearchInd.size(); ++i) {
+                int ind = centroidSearchInd[i];
+                auto &qSegment = mapSegments[ind];
+                float qVolume = qSegment.box.cube_width * qSegment.box.cube_length * qSegment.box.cube_height;
+                float newVolume = new_seg.box.cube_width * new_seg.box.cube_length * new_seg.box.cube_height;
+                double interSection = getIntersection(qSegment.box, new_seg.box);
+                double iou = interSection / (qVolume + newVolume - interSection);
+                if (interSection > 0.0) {
+                    if (interSection < param.dynamicIouThreshold) {
+                        qSegment.segmentCloud = new_seg.segmentCloud;
+                        qSegment.updateBox();
+                    }
+                    else {
+                        qSegment.segmentCloud += new_seg.segmentCloud;
+                        qSegment.updateBox();
+                    }
+                }
+                else {
+                    mapSegments.push_back(new_seg);
+                }
+            }
         }
         
+    }
+
+
+    double getIntersection(Box &box1, Box &box2) {
+        IOU::Vertexes vert1, vert2;
+        double z_upper1, z_lower1, z_upper2, z_lower2, z_upper, z_lower;
+
+        Cluster cluster;
+        cluster.Box2Vertexes(box1, vert1, z_upper1, z_lower1);
+        cluster.Box2Vertexes(box2, vert2, z_upper2, z_lower2);
+
+        double E_n1, E_n2, E_i12, E_u12, E_iou;
+        E_n1 = IOU::areaEx(vert1);
+        E_n2 = IOU::areaEx(vert2);
+        E_i12 = IOU::areaIntersectionEx(vert1, vert2);
+        // E_u12 = IOU::areaUnionEx(vert1, vert2);
+        // E_iou = IOU::iouEx(vert1, vert2);
+
+        z_upper = min(z_upper1, z_upper2);
+        z_lower = max(z_lower1, z_lower2);
+
+        if (E_i12 < 0.0 || z_upper <= z_lower) {
+            return -1.0;
+        }
+        else {
+            // E_n1 = E_n1 * (z_upper1 - z_lower1);
+            // E_n2 = E_n2 * (z_upper2 - z_lower2);
+            E_i12 = E_i12 * (z_upper - z_lower);
+            // E_iou = E_i12 / (E_n1 + E_n2 - E_i12);
+            return E_i12;
+        }
+
+        // printf("       Calcu   %6d    %6d     %6d    %6d   %.3f\n",
+        //     E_n1, E_n2, E_i12, E_u12, E_iou);
+        // if (abs(E_iou - E_i12*1.0/E_u12) > 0.05  ) {
+        //     printf("--  Error in IOU, Please Check Me. --\n");
+        // }
     }
 
 };

@@ -5,6 +5,7 @@
 #include "parameter.h"
 #include "extra_tools/nanoflann_pcl.h"
 #include "extra_tools/debug_utility.h"
+#include "extra_tools/iou.hpp"
 #include "cluster_method/segment.h"
 #include "cluster_method/dbscan.h"
 #include "cluster_method/CVC.hpp"
@@ -121,6 +122,9 @@ public:
             new_segment.centroid = centroid;
             new_segment.semantic = centroid.label;
             new_segment.box = BoundingBox2D(new_segment.segmentCloud);
+            new_segment.boxCenter.x = new_segment.box.bboxTransform[0];
+            new_segment.boxCenter.y = new_segment.box.bboxTransform[1];
+            new_segment.boxCenter.z = new_segment.box.bboxTransform[2];
 
             segments.push_back(new_segment);
         }
@@ -185,6 +189,38 @@ public:
         box.cube_height = whd(2);
 
         return box;
+    }
+
+    bool Box2Vertexes(Box &box, IOU::Vertexes &vertex, double &z_upper, double &z_lower) {
+        pcl::PointCloud<pcl::PointXYZ> cloud;
+        pcl::PointXYZ cur_p;
+        for (int i = -1; i <= 1; i += 2) {
+            for (int j = -1; j <= 1; j += 2) {
+                cur_p.x = i * box.cube_width / 2.0;
+                cur_p.y = j * box.cube_length / 2.0;
+                cur_p.z = 0;
+                cloud.points.push_back(cur_p);
+            }
+        }
+        
+        z_upper = box.bboxTransform[2] + box.cube_height / 2.0;
+        z_lower = box.bboxTransform[2] - box.cube_height / 2.0;
+
+        Eigen::Matrix4f transformation(Eigen::Matrix4f::Identity());
+        transformation.block<3, 3>(0, 0) = box.bboxQuaternion.toRotationMatrix();
+        transformation(0, 3) = box.bboxTransform[0];
+        transformation(1, 3) = box.bboxTransform[1];
+        transformation(2, 3) = box.bboxTransform[2];
+        pcl::PointCloud<pcl::PointXYZ> transformed_cloud;	// 变换后的点云
+        pcl::transformPointCloud(cloud, transformed_cloud, transformation);
+
+        for (auto &p : transformed_cloud.points)
+            vertex.push_back(IOU::Point(p.x, p.y));
+        IOU::beInSomeWiseEx(vertex, IOU::ClockWise);
+        if (IOU::whichWiseEx(vertex) == IOU::NoneWise)
+            return false;
+
+        return true;
     }
 };
 

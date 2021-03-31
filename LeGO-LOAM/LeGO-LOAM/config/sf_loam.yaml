@@ -150,6 +150,7 @@ local_map:
     box_type_simple: true
 
     dynamic_segment_search_radius: 3.0
+    dynamic_iou_threshold: 0.3
 
     debug_generator: true
     debug_transform: false

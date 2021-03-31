@@ -98,6 +98,7 @@ public:
     int maxClusterSize;
 
     float dynamicSegmentSearchRadius;
+    float dynamicIouThreshold;
 
     bool debugOctomapGenerator;
     bool debugOctomapCluster;
@@ -203,6 +204,8 @@ public:
         nh.param<int>("/local_map/max_cluster_size", maxClusterSize, 20000);
 
         nh.param<float>("/local_map/dynamic_segment_search_radius", dynamicSegmentSearchRadius, 2.0);
+        nh.param<float>("/local_map/dynamic_iou_threshold", dynamicIouThreshold, 0.4);
+        
         
         nh.param<bool>("/local_map/debug_generator", debugOctomapGenerator, false);
         nh.param<bool>("/local_map/debug_cluster", debugOctomapCluster, false);

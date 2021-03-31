@@ -38,9 +38,13 @@ public:
             return;
         boxS = BoundingBoxSimple();
         box = BoundingBox();
+        boxCenter.x = box.bboxTransform[0];
+        boxCenter.y = box.bboxTransform[1];
+        boxCenter.z = box.bboxTransform[2];
     }
 
     PointType centroid;                         // 点云的质心
+    PointType boxCenter;                        // box 的中心
     pcl::PointCloud<PointType> segmentCloud;    // segment 中包含的点云
 
     BoxSimple boxS;
@@ -58,15 +62,15 @@ private:
         PointType minPoint, maxPoint;
         pcl::getMinMax3D(segmentCloud, minPoint, maxPoint);
 
-        BoxSimple box;
-        box.x = (maxPoint.x + minPoint.x) / 2;
-        box.y = (maxPoint.y + minPoint.y) / 2;
-        box.z = (maxPoint.z + minPoint.z) / 2;
-        box.cube_width = maxPoint.x;
-        box.cube_length = maxPoint.y;
-        box.cube_height = maxPoint.z;
+        BoxSimple tempBox;
+        tempBox.x = (maxPoint.x + minPoint.x) / 2;
+        tempBox.y = (maxPoint.y + minPoint.y) / 2;
+        tempBox.z = (maxPoint.z + minPoint.z) / 2;
+        tempBox.cube_width = maxPoint.x;
+        tempBox.cube_length = maxPoint.y;
+        tempBox.cube_height = maxPoint.z;
 
-        return box;
+        return tempBox;
     }
 
 
@@ -120,12 +124,12 @@ private:
         whd = max_pt.getVector3fMap() - min_pt.getVector3fMap();// getVector3fMap:返回Eigen::Map<Eigen::Vector3f>
         float scale = (whd(0) + whd(1) + whd(2)) / 3;			// 点云平均尺度，用于设置主方向箭头大小
 
-        Box box;
-        box.bboxTransform = tfinal;
-        box.bboxQuaternion = qfinal;
-        box.cube_width = whd(0);
-        box.cube_length = whd(1);
-        box.cube_height = whd(2);
+        Box tempBox;
+        tempBox.bboxTransform = tfinal;
+        tempBox.bboxQuaternion = qfinal;
+        tempBox.cube_width = whd(0);
+        tempBox.cube_length = whd(1);
+        tempBox.cube_height = whd(2);
 
         return box;
     }
