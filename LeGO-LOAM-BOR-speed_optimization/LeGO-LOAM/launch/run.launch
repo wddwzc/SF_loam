@@ -10,10 +10,12 @@
     <node pkg="tf" type="static_transform_publisher" name="camera_init_to_map"  args="0 0 0 1.570795   0        1.570795 /map    /camera_init 10" />
     <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera" args="0 0 0 -1.570795 -1.570795 0        /camera /base_link   10" />
 
-    <!--- LeGO-LOAM -->    
-    <arg name="rosbag"  default=""/>
+    <!--- LeGO-LOAM -->
+    <!--- arg name="rosbag"  default="/media/wzc/27f38a77-e29e-4c11-b3fd-0d7d02745eb2/home/wzc/catkin_ws/2021-01-16-DianQiLou.bag"-->
+    <arg name="rosbag"  default="/home/wzc/Data/kitti/data_odometry_laser/data_local/kitti_odometry_00.bag"/>
     <arg name="imu_topic" default="/imu/data"/>
-    <arg name="lidar_topic" default="/velodyne_points"/>
+    <!---arg name="lidar_topic" default="/velodyne_points"-->
+    <arg name="lidar_topic" default="/kitti/velo/pointxyzi"/>
 
     <rosparam file="$(find lego_loam_bor)/config/loam_config.yaml" command="load"/>
 

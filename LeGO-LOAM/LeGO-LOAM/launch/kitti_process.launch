@@ -1,0 +1,7 @@
+<launch>
+    <node pkg="lego_loam" type="kittiProcess"    name="kittiProcess"  output="screen">
+        <remap from="/kitti/velo/pointxyzi" to="/kitti/velo/point"/>
+        <remap from="/kitti/velo/pointxyzl" to="/kitti/velo/pointlabel"/>
+        <!--remap from="/kitti/velo/pointall" to="/kitti/velo/pointall"-->
+    </node>
+</launch>

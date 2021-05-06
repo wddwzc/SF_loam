@@ -32,6 +32,7 @@
 //   T. Shan and B. Englot. LeGO-LOAM: Lightweight and Ground-Optimized Lidar Odometry and Mapping on Variable Terrain
 //      IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS). October 2018.
 
+
 #include <gtsam/geometry/Rot3.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/slam/PriorFactor.h>
@@ -46,12 +47,29 @@
 // #include "utility.h"
 // #include "parameter.h"
 #include "extra_tools/Scancontext.h"
+#include "extra_tools/debug_utility.h"
+#include "parameter.h"
 
 using namespace gtsam;
 
 class mapOptimization{
 
 private:
+    ros::NodeHandle nh;
+
+    std::vector<double> times_whole;
+    std::vector<double> times_opt;
+    std::vector<double> iter_corner_counts;
+    std::vector<double> iter_surf_counts;
+    double iter_corner_count;
+    double iter_surf_count;
+    TimeRecorder t_whole;
+    TimeRecorder t_opt;
+    double cal_average(std::vector<double> &data) {
+        double sum = std::accumulate(data.begin(), data.end(), 0.0);
+        return sum / data.size();
+    }
+
     NonlinearFactorGraph gtSAMgraph;
     Values initialEstimate;
     Values optimizedEstimate;
@@ -62,8 +80,6 @@ private:
     noiseModel::Diagonal::shared_ptr odometryNoise;
     noiseModel::Diagonal::shared_ptr constraintNoise;
     noiseModel::Base::shared_ptr robustNoiseModel;      // use for SC
-
-    ros::NodeHandle nh;
 
     ros::Publisher pubLaserCloudSurround;
     ros::Publisher pubOdomAftMapped;
@@ -285,6 +301,29 @@ public:
         aftMappedTrans.child_frame_id_ = "/aft_mapped";
 
         allocateMemory();
+    }
+
+    void printInfo() {
+        printf("############################### \n");
+        printf("Mapping the means of times: \n");
+        printf("Mapping: whole time %f ms \n", cal_average(times_whole));
+        printf("Mapping: optimization time %f ms \n", cal_average(times_opt));
+        printf("Mapping: Corner iteration time %f \n", cal_average(iter_corner_counts));
+        printf("Mapping: Surf iteration time %f \n", cal_average(iter_surf_counts));
+        cout << "########## save path ###############" << endl;
+        cout << cloudKeyPoses6D->points.size();
+        ofstream time_f("/home/wzc/lego_times.txt");
+        ofstream pose_f("/home/wzc/lego_poses.txt");
+        double origin_time = 0;
+        if (!cloudKeyPoses6D->points.empty()) {
+            origin_time = cloudKeyPoses6D->points[0].time;
+        }
+        for (auto &p : cloudKeyPoses6D->points) {
+            time_f << (p.time - origin_time) << endl;
+            pose_f << p.x << " " << p.y << " "  <<  p.z << " "  << p.roll << " "  << p.pitch << " "  << p.yaw << endl;
+        }
+        cout << " saved!" << endl;
+
     }
 
     void allocateMemory(){
@@ -1306,12 +1345,18 @@ public:
             pointAssociateToMap(&pointOri, &pointSel);
             kdtreeCornerFromMap->nearestKSearch(pointSel, 5, pointSearchInd, pointSearchSqDis);
             
+            int same_count = 0;
             if (pointSearchSqDis[4] < 1.0) {
                 float cx = 0, cy = 0, cz = 0;
                 for (int j = 0; j < 5; j++) {
                     cx += laserCloudCornerFromMapDS->points[pointSearchInd[j]].x;
                     cy += laserCloudCornerFromMapDS->points[pointSearchInd[j]].y;
                     cz += laserCloudCornerFromMapDS->points[pointSearchInd[j]].z;
+                    if (param.semantic) {
+                        if (laserCloudCornerFromMapDS->points[pointSearchInd[j]].label == pointSel.label) {
+                            ++same_count;
+                        }
+                    }
                 }
                 cx /= 5; cy /= 5;  cz /= 5;
 
@@ -1388,11 +1433,18 @@ public:
             pointAssociateToMap(&pointOri, &pointSel); 
             kdtreeSurfFromMap->nearestKSearch(pointSel, 5, pointSearchInd, pointSearchSqDis);
 
+            int same_count = 0;
             if (pointSearchSqDis[4] < 1.0) {
                 for (int j = 0; j < 5; j++) {
                     matA0.at<float>(j, 0) = laserCloudSurfFromMapDS->points[pointSearchInd[j]].x;
                     matA0.at<float>(j, 1) = laserCloudSurfFromMapDS->points[pointSearchInd[j]].y;
                     matA0.at<float>(j, 2) = laserCloudSurfFromMapDS->points[pointSearchInd[j]].z;
+
+                    if (param.semantic) {
+                        if (laserCloudSurfFromMapDS->points[pointSearchInd[j]].label == pointSel.label) {
+                            ++same_count;
+                        }
+                    }
                 }
                 cv::solve(matA0, matB0, matX0, cv::DECOMP_QR);
 
@@ -1424,6 +1476,11 @@ public:
                     coeff.y = s * pb;
                     coeff.z = s * pc;
                     coeff.intensity = s * pd2;
+
+                    if (param.semantic) {
+                        float ratio = (float)same_count / 5.0;
+                        s = s * exp(ratio - 0.6);
+                    }
 
                     if (s > 0.1) {
                         laserCloudOri->push_back(pointOri);
@@ -1541,7 +1598,12 @@ public:
             kdtreeCornerFromMap->setInputCloud(laserCloudCornerFromMapDS);
             kdtreeSurfFromMap->setInputCloud(laserCloudSurfFromMapDS);
 
+            iter_corner_count = 0;
+            iter_surf_count = 0;
+
             for (int iterCount = 0; iterCount < 10; iterCount++) {
+                iter_corner_count += 1;
+                iter_surf_count += 1;
 
                 laserCloudOri->clear();
                 coeffSel->clear();
@@ -1552,6 +1614,9 @@ public:
                 if (LMOptimization(iterCount) == true)
                     break;              
             }
+
+            iter_corner_counts.push_back(iter_corner_count);
+            iter_surf_counts.push_back(iter_surf_count);
 
             transformUpdate();
         }
@@ -1726,18 +1791,26 @@ public:
 
                 timeLastProcessing = timeLaserOdometry;
 
+                t_whole.recordStart();
+
                 transformAssociateToMap();
 
                 extractSurroundingKeyFrames();
 
                 downsampleCurrentScan();
 
+                t_opt.recordStart();
+
                 scan2MapOptimization();
+
+                times_opt.push_back(t_opt.calculateDuration());
 
                 // 在lego基础上，添加了 scManager
                 saveKeyFramesAndFactor();
 
                 correctPoses();
+
+                times_whole.push_back(t_whole.calculateDuration());
 
                 publishTF();
 
@@ -1770,6 +1843,8 @@ int main(int argc, char** argv)
 
         rate.sleep();
     }
+
+    MO.printInfo();
 
     loopthread.join();
     visualizeMapThread.join();

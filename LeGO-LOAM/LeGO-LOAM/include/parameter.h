@@ -38,12 +38,14 @@ public:
     // imageProjection
     // Using velodyne cloud "ring" channel for image projection (other lidar may have different name for this channel, change "PointXYZIR" below)
     bool useCloudRing;  // if true, ang_res_y and ang_bottom are not used
+
+    std::string classMapType;
     
     float sensorMinimumRange;
     float sensorMountAngle;
     float sensorToGround;
     bool filterGroundNoise;
-    bool useSimpleMethod;
+    std::string filterGroundMethod;
 
     float segmentTheta;
     int segmentValidPointNum;
@@ -57,6 +59,7 @@ public:
 
 
     // featureAssociation
+    int skipFrameNum;
     float edgeThreshold;
     float surfThreshold;
     float nearestFeatureSearchSqDist;
@@ -136,11 +139,12 @@ public:
 
         // imageProjection
         nh.param<bool>("/sf_loam/imageProjection/use_cloud_ring", useCloudRing, false);
+        nh.param<std::string>("/sf_loam/imageProjection/class_map_type", classMapType, "raw");
         nh.param<float>("/sf_loam/imageProjection/sensor_minimum_range", sensorMinimumRange, 1.0);
         nh.param<float>("/sf_loam/imageProjection/sensor_mount_angle", sensorMountAngle, 0.0);
         nh.param<float>("/sf_loam/imageProjection/sensor_to_ground", sensorToGround, 1.0);
         nh.param<bool>("/sf_loam/imageProjection/filter_ground_noise", filterGroundNoise, false);
-        nh.param<bool>("/sf_loam/imageProjection/use_simple_method", useSimpleMethod, true);
+        nh.param<std::string>("/sf_loam/imageProjection/filter_ground_method", filterGroundMethod, "height");
         nh.param<float>("/sf_loam/imageProjection/segment_theta", segmentTheta, 60.0);
         segmentTheta /= 180.0 * M_PI;
         nh.param<int>("/sf_loam/imageProjection/segment_valid_point_num", segmentValidPointNum, 5);
@@ -154,6 +158,7 @@ public:
         nh.param<bool>("/sf_loam/imageProjection/debug_timecost", debugTimeCost, false);
 
         // featureAssociation
+        nh.param<int>("/sf_loam/featureAssociation/skip_frame_num", skipFrameNum, 1);
         nh.param<float>("/sf_loam/featureAssociation/edge_threshold", edgeThreshold, 0.1);
         nh.param<float>("/sf_loam/featureAssociation/surf_threshold", surfThreshold, 0.1);
         nh.param<float>("/sf_loam/featureAssociation/nearest_feature_search_square_distance", 

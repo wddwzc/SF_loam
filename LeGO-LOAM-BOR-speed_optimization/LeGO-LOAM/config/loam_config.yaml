@@ -2,13 +2,30 @@ lego_loam:
 
     # VLP-16
     laser:
-        num_vertical_scans: 16
-        num_horizontal_scans: 1800
-        ground_scan_index: 7
-        vertical_angle_bottom: -15          # degrees
-        vertical_angle_top: 15              # degrees
+        num_vertical_scans: 64
+        num_horizontal_scans: 2250
+        ground_scan_index: 50
+        vertical_angle_bottom: -24.9        # degrees
+        vertical_angle_top: 2.0             # degrees
         sensor_mount_angle: 0               # degrees
         scan_period: 0.1                    # seconds
+
+        # num_vertical_scans: 32
+        # num_horizontal_scans: 2000
+        # ground_scan_index: 15
+        # vertical_angle_bottom: -16.1        # degrees
+        # vertical_angle_top: 15              # degrees
+        # sensor_mount_angle: 0               # degrees
+        # scan_period: 0.1                    # seconds 
+
+        # num_vertical_scans: 16
+        # num_horizontal_scans: 1800
+        # ground_scan_index: 7
+        # vertical_angle_bottom: -15          # degrees
+        # vertical_angle_top: 15              # degrees
+        # sensor_mount_angle: 0               # degrees
+        # scan_period: 0.1                    # seconds
+
 
     imageProjection:
         segment_valid_point_num: 5

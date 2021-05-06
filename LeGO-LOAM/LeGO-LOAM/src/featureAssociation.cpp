@@ -33,12 +33,26 @@
 //      IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS). October 2018.
 
 #include "utility.h"
+#include "extra_tools/debug_utility.h"
 #include "parameter.h"
 
 class FeatureAssociation{
 
 private:
 	ros::NodeHandle nh;
+
+    std::vector<double> times_whole;
+    std::vector<double> times_opt;
+    std::vector<double> iter_corner_counts;
+    std::vector<double> iter_surf_counts;
+    double iter_corner_count;
+    double iter_surf_count;
+    TimeRecorder t_whole;
+    TimeRecorder t_opt;
+    double cal_average(std::vector<double> &data) {
+        double sum = std::accumulate(data.begin(), data.end(), 0.0);
+        return sum / data.size();
+    }
 
     ros::Subscriber subLaserCloud;
     ros::Subscriber subLaserCloudInfo;
@@ -160,7 +174,6 @@ private:
     ros::Publisher pubLaserOdometry;
     ros::Publisher pubOutlierCloudLast;
 
-    int skipFrameNum;
     bool systemInitedLM;
 
     int laserCloudCornerLastNum;
@@ -229,6 +242,15 @@ public:
         pubLaserOdometry = nh.advertise<nav_msgs::Odometry> ("/laser_odom_to_init", 5);
         
         initializationValue();
+    }
+
+    ~FeatureAssociation() {
+        printf("############################### \n");
+        printf("Odom the means of times: \n");
+        printf("Odom: whole time %f ms \n", cal_average(times_whole));
+        printf("Odom: optimization time %f ms \n", cal_average(times_opt));
+        printf("Odom: Corner iteration time %f \n", cal_average(iter_corner_counts));
+        printf("Odom: Surf iteration time %f \n", cal_average(iter_surf_counts));
     }
 
     void initializationValue()
@@ -331,9 +353,6 @@ public:
         //     imuAngularRotationX[i] = 0; imuAngularRotationY[i] = 0; imuAngularRotationZ[i] = 0;
         // }
 
-
-        skipFrameNum = 1;
-
         for (int i = 0; i < 6; ++i){
             transformCur[i] = 0;
             transformSum[i] = 0;
@@ -362,7 +381,7 @@ public:
         isDegenerate = false;
         matP = cv::Mat(6, 6, CV_32F, cv::Scalar::all(0));
 
-        frameCount = skipFrameNum;
+        frameCount = param.skipFrameNum;
     }
 
     void updateImuRollPitchYawStartSinCos(){
@@ -1190,12 +1209,21 @@ public:
                     s = 1 - 1.8 * fabs(ld2);
                 }
 
+                if (param.semantic) {
+                    if (pointSel.label == tripod2.x && pointSel.label == tripod1.x) {
+                        s = s * 1.2;
+                    }
+                    else if (pointSel.label != tripod2.x && pointSel.label != tripod1.x) {
+                        s = s * 0.8;
+                    }
+                }
+
                 if (s > 0.1 && ld2 != 0) {
                     coeff.x = s * la; 
                     coeff.y = s * lb;
                     coeff.z = s * lc;
                     coeff.intensity = s * ld2;
-                  
+                
                     laserCloudOri->push_back(cornerPointsSharp->points[i]);
                     coeffSel->push_back(coeff);
                 }
@@ -1303,6 +1331,15 @@ public:
                 if (iterCount >= 5) {
                     s = 1 - 1.8 * fabs(pd2) / sqrt(sqrt(pointSel.x * pointSel.x
                             + pointSel.y * pointSel.y + pointSel.z * pointSel.z));
+                }
+
+                if (param.semantic) {
+                    if (pointSel.label == tripod2.x && pointSel.label == tripod1.x) {
+                        s = s * 1.2;
+                    }
+                    else if (pointSel.label != tripod2.x && pointSel.label != tripod1.x) {
+                        s = s * 0.8;
+                    }
                 }
 
                 if (s > 0.1 && pd2 != 0) {
@@ -1719,7 +1756,11 @@ public:
         if (laserCloudCornerLastNum < 10 || laserCloudSurfLastNum < 100)
             return;
 
+        iter_surf_count = 0;
+
         for (int iterCount1 = 0; iterCount1 < 25; iterCount1++) {
+            iter_surf_count += 1;
+
             laserCloudOri->clear();
             coeffSel->clear();
 
@@ -1731,7 +1772,11 @@ public:
                 break;
         }
 
+        iter_surf_counts.push_back(iter_surf_count);
+        iter_corner_count = 0;
+
         for (int iterCount2 = 0; iterCount2 < 25; iterCount2++) {
+            iter_corner_count += 1;
 
             laserCloudOri->clear();
             coeffSel->clear();
@@ -1743,6 +1788,7 @@ public:
             if (calculateTransformationCorner(iterCount2) == false)
                 break;
         }
+        iter_corner_counts.push_back(iter_corner_count);
     }
 
     void integrateTransformation(){
@@ -1840,7 +1886,7 @@ public:
 
         frameCount++;
 
-        if (frameCount >= skipFrameNum + 1) {
+        if (frameCount >= param.skipFrameNum + 1) {
 
             frameCount = 0;
 
@@ -1894,6 +1940,8 @@ public:
         /**
 		2. Feature Association
         */
+        t_whole.recordStart();
+
         if (!systemInitedLM) {
             checkSystemInitialization();
             return;
@@ -1901,9 +1949,15 @@ public:
 
         updateInitialGuess();
 
+        t_opt.recordStart();
+
         updateTransformation();
 
+        times_opt.push_back(t_opt.calculateDuration());
+
         integrateTransformation();
+
+        times_whole.push_back(t_whole.calculateDuration());
 
         publishOdometry();
 
@@ -1933,5 +1987,6 @@ int main(int argc, char** argv)
     }
     
     ros::spin();
+
     return 0;
 }

@@ -34,17 +34,20 @@ std::unordered_map<int, std::vector<int> > colors_map = {
     {80, {150, 240, 255}},
     {81, {0, 0, 255}},
     {99, {255, 255, 50}},
-    {252, {245, 150, 100}},
-    {256, {255, 0, 0}},
-    {253, {200, 40, 255}},
-    {254, {30, 30, 255}},
-    {255, {90, 30, 150}},
-    {257, {250, 80, 100}},
-    {258, {180, 30, 80}},
-    {259, {255, 0, 0}}
+
+    // {252, {245, 150, 100}},
+    // {253, {200, 40, 255}},
+    // {254, {30, 30, 255}},
+    // {255, {90, 30, 150}},
+    // {256, {255, 0, 0}},
+    // {257, {250, 80, 100}},
+    // {258, {180, 30, 80}},
+    // {259, {255, 0, 0}}
+    {250, {245, 150, 100}}
 };
 
-// trans classes to 
+
+// trans 25 classes to color
 std::unordered_map<int, std::vector<int> > colors_map_tran = {
 	// {0, {0, 0, 0}},
     {0, {40, 40, 40}},
@@ -74,6 +77,39 @@ std::unordered_map<int, std::vector<int> > colors_map_tran = {
     {24, {255, 0, 0}},
     {25, {180, 30, 80}},
 };
+
+std::unordered_map<int, std::vector<int> > colors_map_simple = {
+    {0, {40, 40, 40}},
+    {1, {245, 150, 100}},
+    // {1, {255, 0, 255}},
+    {2, {245, 230, 100}},
+    {3, {30, 30, 255}},
+    {4, {255, 0, 255}},
+    // {4, {245, 150, 100}},
+    {5, {0, 200, 255}},
+    {6, {50, 120, 255}},
+    {7, {0, 175, 0}},
+    {8, {0, 60, 135}},
+    {9, {150, 240, 255}},
+    {10, {0, 0, 255}},
+    {11, {250, 80, 100}}
+};
+
+// 车辆、行人、地面、建筑、栏杆、植被、树木、杆子、交通标识
+
+// 26 classes mapping to  classes
+// 0 unlabeled
+// 1 car
+// 2 person
+// 3 ground
+// 4 building
+// 5 fence
+// 6 vegetation
+// 7 trunk
+// 8 pole
+// 9 traffic sign
+
+
 
 // 26 valid classes, the map for original id to training id
 // 0 is unclassified (total 26 classes with 0)
@@ -115,53 +151,57 @@ std::unordered_map<int, int> classes_map = {
 };
 
 
-// 26 classes mapping to  classes
-// 0 unlabeled
-// 1 car
-// 2 bicycle
-// 3 person
-// 4 road(ground)
-// 5 building
-// 6 vegetation
-// 7 trunk(pole)
-
-
+/*
+0:  0,1,52,99               # "unlabeled"
+1:  10,252,18,258           # "car"
+2:  11,255,253,31,32,15     # "bicycle"
+3:  30,254                  # "person"
+4:  40,60,49,48,44          # "road"
+5: 50                       # "building"
+6: 51                       # "fence"
+7: 70,72                    # "vegetation"
+8: 71                       # "trunk"
+9: 80                       # "pole"
+10: 81                      # "traffic-sign"
+11:  13,16,20,256,257,259   # "other-vehicle"
+*/
 std::unordered_map<int, int> simple_classes_map = {
-    {0, 0},  // 0 unlabeled
-    {1, 1},  // 1 car
-    {2, 2},  // 2 bicycle
-    {3, 2},  // motorcycle -> bicycle 2
-    {4, 1},  // truck -> car 1
-    {5, 1},  // other-vehicle -> car 1
-    {6, 3},  // 3 person
-    {7, 2},  // bicyclist -> bicycle 2
-    {8, 2},  // motorcyclist -> bicycle 2
-    {9, 4},  // 4 road
-    {10, 4}, // parking -> road 4
-    {11, 4}, // sidewalk -> road 4
-    {12, 4}, // other-ground -> road 4
-    {13, 5}, // 5 building
-    {14, 5}, // fence -> building 5
-    {15, 6}, // 6 vegetation
-    {16, 7}, // 7 trunk
-    {17, 4}, // terrain -> road 4
-    {18, 7}, // pole -> trunk 7
-    {19, 7}, // traffic-sign -> trunk 7
-    {20, 1}, // moving-car -> car 1
-    {21, 2}, // moving-bicyclist -> bicycle 2
-    {22, 3}, // moving-person -> person 3
-    {23, 2}, // moving-motorcyclist -> cyclist 2
-    {24, 1}, // moving-other-vehicle -> car 1
-    {25, 1}, // moving-truck -> car 1
+    {0 , 0},
+	{1 , 0},
+	{10, 1},
+	{11, 2},
+	{13, 11},
+	{15, 2},
+	{16, 11},
+	{18, 1},
+	{20, 11},
+	{30, 3},
+	{31, 2},
+	{32, 2},
+	{40, 4},
+	{44, 4},
+	{48, 4},
+	{49, 4},
+	{50, 5},
+	{51, 6},
+	{52, 0},
+	{60, 4},
+	{70, 7},
+	{71, 8},
+	{72, 7},
+	{80, 9},
+	{81, 10},
+	{99, 0},
+	{252, 1},
+	{253, 2},
+	{254, 3},
+	{255, 2},
+	{256, 11},
+	{257, 11},
+	{258, 1},
+	{259, 11}
 };
 
-
-// 0 building
-// 1 road
-// 2 vegetation
-// 3 vehicle
-// 4 pole
-// 5 pedestrian
 
 
 /*

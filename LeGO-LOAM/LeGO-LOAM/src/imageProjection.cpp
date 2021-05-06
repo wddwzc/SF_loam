@@ -282,16 +282,32 @@ public:
             thisPoint.z = laserCloudIn->points[i].z;
 
             if (param.semantic) {
-                thisPoint.label = classes_map[laserCloudIn->points[i].label];
-
+                int class_id;
+                std::vector<int> cur_colors_map;
+                if (param.classMapType == "normal") {
+                    thisPoint.label = classes_map[laserCloudIn->points[i].label];
+                    class_id = classes_map[laserCloudIn->points[i].label];
+                    cur_colors_map = colors_map_tran[class_id];
+                }
+                else if (param.classMapType == "simple") {
+                    thisPoint.label = simple_classes_map[laserCloudIn->points[i].label];
+                    class_id = simple_classes_map[laserCloudIn->points[i].label];
+                    cur_colors_map = colors_map_simple[class_id];
+                }
+                else {
+                    if (laserCloudIn->points[i].label > 250)    class_id = 250;
+                    else                                        class_id = laserCloudIn->points[i].label;
+                    thisPoint.label = class_id;
+                    cur_colors_map = colors_map[class_id];
+                }
+                
                 pcl::PointXYZRGB cur_p;
                 cur_p.x = laserCloudIn->points[i].x;
                 cur_p.y = laserCloudIn->points[i].y;
                 cur_p.z = laserCloudIn->points[i].z;
-                int class_id = classes_map[laserCloudIn->points[i].label];
-                cur_p.r = colors_map_tran[class_id][0];
-                cur_p.g = colors_map_tran[class_id][1];
-                cur_p.b = colors_map_tran[class_id][2];
+                cur_p.r = cur_colors_map[0];
+                cur_p.g = cur_colors_map[1];
+                cur_p.b = cur_colors_map[2];
                 laserCloudColor->push_back(cur_p);
             }
             
@@ -360,6 +376,12 @@ public:
                 lowerInd = j + ( i )*param.Horizon_SCAN;
                 upperInd = j + (i+1)*param.Horizon_SCAN;
 
+                if (param.filterGroundNoise) {
+                    if (param.filterGroundMethod == "label")
+                        if (fullCloud->points[lowerInd].label == 3)
+                            groundMat.at<int8_t>(i,j) = 1;
+                }
+
                 // have no valid info, intensity = -1
                 if (fullCloud->points[lowerInd].intensity == -1 ||
                     fullCloud->points[upperInd].intensity == -1){
@@ -377,12 +399,15 @@ public:
                 if (abs(angle - param.sensorMountAngle) <= 10){
                 //if (abs(angle - sensorMountAngle) <= 5){
                 // if (abs(angle - sensorMountAngle) <= 8){
-                    if (param.filterGroundNoise && param.useSimpleMethod)
-                        if (fullCloud->points[upperInd].z > -param.sensorToGround || fullCloud->points[lowerInd].z > -param.sensorToGround)
-                            continue;
+                    if (param.filterGroundNoise) {
+                        if (param.filterGroundMethod == "height")
+                            if (fullCloud->points[upperInd].z > -param.sensorToGround || fullCloud->points[lowerInd].z > -param.sensorToGround)
+                                continue;
+                    }
                     groundMat.at<int8_t>(i,j) = 1;
                     groundMat.at<int8_t>(i+1,j) = 1;
                 }
+
             }
         }
 

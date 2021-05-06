@@ -1,0 +1,42 @@
+<launch>
+	<node pkg="trans_tools" type="pose2lidarframe" name="pose2lidarframe" output="screen">
+		<!-- 
+			kitti: kitti/velodyne_poses
+			loam: integrated_to_init      
+			loam: aft_mapped_to_init
+			aloam: aft_mapped_to_init_high_frec 
+			aloam: aft_mapped_to_init
+			floam: odom
+			lego: integrated_to_init
+			alego: odom_aft_mapped
+
+			gnss: aft_mapped_to_init
+		-->
+		<param name="odometry_topic" 				type="string" 	value="/integrated_to_init"/>
+		<!-- 
+			loam
+			ls_loam
+			lego
+			kitti_laser_pose
+			gnss
+		-->
+		<param name="odometry_type"					type="string"	value="lego"/>
+		<param name="gnss_aligned_angle"			type="double"   value="0.12"/>
+
+		<param name="odometry_topic_trans" 			type="string" 	value="/laser_odometry_trans"/>
+		<param name="odometry_pub_skip"				type="int" 		value="10"/>
+		<param name="ouput" 						type="bool" 	value="true"/>
+		<!-- 
+			00_gt
+			00_loam
+			00_aloam
+			00_floam
+			00_lego
+			00_SFaloam
+		-->
+		<param name="output_file" 					type="string" 	value="/home/wzc/Data/kitti/data_odometry_laser/temp_poses/45_sflego.txt"/>
+		<param name="time_file" 					type="string" 	value="/home/wzc/Data/kitti/data_odometry_laser/temp_poses/45_sflego_times.txt"/>
+		
+	</node>
+</launch>
+

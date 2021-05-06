@@ -24,11 +24,13 @@ private:
     ros::Publisher pubNoGroundCloud;
     ros::Publisher pubSegmentCentroids;
     ros::Publisher pubBoundingBox;
+    ros::Publisher pubSegmentCenter;
+    ros::Publisher pubLocalMapStatic;
+    ros::Publisher pubLocalMapDynamic;
     ros::Subscriber subPointCloudAll;
     ros::Subscriber subGroundCloud;
     ros::Subscriber subSegmentedCloud;
     ros::Subscriber subLaserOdom;
-
     pcl::PointCloud<PointType>::Ptr pointCloudAll;
     pcl::PointCloud<PointType>::Ptr groundCloudLast;
     pcl::PointCloud<PointType>::Ptr segmentedCloudLast;
@@ -47,8 +49,12 @@ private:
     Eigen::Matrix4d global_pose;
     octomap::OcTree *tree;
     vector<Segment> mapSegments;                          // 局部地图分割
-    pcl::PointCloud<PointType>::Ptr mapSegmentsCenters;   // boudning box 中心
+    pcl::PointCloud<PointType>::Ptr mapSegmentsCenters;   // 地图的 boudning box 中心
+    pcl::PointCloud<PointType>::Ptr cloudSegmentsCenters; // 当前帧的 bounding box 中心
     pcl::PointCloud<PointType>::Ptr localMapCloud;        // 局部地图点云
+
+    pcl::PointCloud<PointType>::Ptr localMapCloudStatic;
+    pcl::PointCloud<PointType>::Ptr localMapCloudDynamic;
 
     ParamServer param;
 
@@ -61,7 +67,12 @@ public:
         pubNoGroundCloud = nh.advertise<sensor_msgs::PointCloud2>("/octomap/no_ground_cloud", 2);
         pubSegmentCentroids = nh.advertise<sensor_msgs::PointCloud2>("/octomap/segment_centroids", 2);
         pubBoundingBox = nh.advertise<visualization_msgs::MarkerArray>("/octomap/bounding_box", 2);
-        subPointCloudAll = nh.subscribe<sensor_msgs::PointCloud2>("/kitti/velo/pointall", 2, &LocalMap::pointCloudAllHandler, this);
+        pubSegmentCenter = nh.advertise<visualization_msgs::MarkerArray>("/octomap/segment_centers", 2);
+
+        pubLocalMapStatic = nh.advertise<sensor_msgs::PointCloud2>("/octomap/localmap_static", 2);
+        pubLocalMapDynamic = nh.advertise<sensor_msgs::PointCloud2>("/octomap/localmap_dynamic", 2);
+
+        subPointCloudAll = nh.subscribe<sensor_msgs::PointCloud2>(param.semanticPointCloudTopic, 2, &LocalMap::pointCloudAllHandler, this);
         subGroundCloud = nh.subscribe<sensor_msgs::PointCloud2>("/ground_cloud", 2, &LocalMap::groundCloudHandler, this);
         subSegmentedCloud = nh.subscribe<sensor_msgs::PointCloud2>("/segmented_cloud_pure", 2, &LocalMap::segmentedCloudHandler, this);
         subLaserOdom = nh.subscribe<nav_msgs::Odometry>(param.odometryTopic, 5, &LocalMap::laserOdometryHandler, this);
@@ -71,7 +82,11 @@ public:
         segmentedCloudLast.reset(new pcl::PointCloud<PointType>());
 
         mapSegmentsCenters.reset(new pcl::PointCloud<PointType>());
+        cloudSegmentsCenters.reset(new pcl::PointCloud<PointType>());
         localMapCloud.reset(new pcl::PointCloud<PointType>());
+
+        localMapCloudStatic.reset(new pcl::PointCloud<PointType>());
+        localMapCloudDynamic.reset(new pcl::PointCloud<PointType>());
 
         newPointCloudAll = false;
         newGroundCloudLast = false;
@@ -86,6 +101,8 @@ public:
         pointCloudAll->clear();
         groundCloudLast->clear();
         segmentedCloudLast->clear();
+
+        cloudSegmentsCenters->clear();
     }
 
     void pointCloudAllHandler(const sensor_msgs::PointCloud2::ConstPtr& laserCloud) {
@@ -192,27 +209,46 @@ public:
             // removeDynamicSegment(new_segments);
             
             
-
             *localMapCloud += *groundCloud;
-            // *localMapCloud += *noGroundCloud;
-            for (auto &seg : mapSegments) {
-                *localMapCloud += seg.segmentCloud;
-            }
+            *localMapCloud += *noGroundCloud;
+            // for (auto &seg : mapSegments) {
+            //     *localMapCloud += seg.segmentCloud;
+            // }
             pcl::VoxelGrid<PointType> local_filter;
             local_filter.setLeafSize(param.voxelLeafSize, param.voxelLeafSize, param.voxelLeafSize);  // default: 0.1
             local_filter.setInputCloud(localMapCloud);
             local_filter.filter(*localMapCloud);
 
 
+            for (auto &p : pointCloudAll->points) {
+                if (p.label == 40 || p.label == 60 || p.label == 49 || p.label == 48 || p.label == 44 || p.label >= 250) {
+                    localMapCloudDynamic->points.push_back(p);
+                }
+                else {
+                    localMapCloudStatic->points.push_back(p);
+                }
+            }
+            local_filter.setInputCloud(localMapCloudDynamic);
+            local_filter.filter(*localMapCloudDynamic);
+            local_filter.setInputCloud(localMapCloudStatic);
+            local_filter.filter(*localMapCloudStatic);
+
+
             if (param.debugOctomapGenerator && param.debugOctomapTimeCost)
                 generatorTime.printDuration("Generate local map cost: ");
 
-            
-            visualizeCloudRGB(groundCloud, pubGroundCloud, currentHeader.stamp, "/local_map");
-            visualizeCloudRGB(noGroundCloud, pubNoGroundCloud, currentHeader.stamp, "/local_map");
-            visualizeCloudRGB(mapSegmentsCenters, pubSegmentCentroids, currentHeader.stamp, "/local_map");
-            visualizeCloudRGB(localMapCloud, pubLocalMap, currentHeader.stamp, "/local_map");
-            visualizeBox(new_segments, pubBoundingBox, currentHeader.stamp, "/local_map");
+
+            visualizeCloudRGB(groundCloud, pubGroundCloud, currentHeader.stamp, "/local_map",  param);
+            // visualizeCloud(noGroundCloud, pubNoGroundCloud, currentHeader.stamp, "/local_map", param);
+            visualizeCloudRGB(noGroundCloud, pubNoGroundCloud, currentHeader.stamp, "/local_map", param);
+            visualizeCloudRGB(mapSegmentsCenters, pubSegmentCentroids, currentHeader.stamp, "/local_map", param);
+            visualizeCloudRGB(localMapCloud, pubLocalMap, currentHeader.stamp, "/local_map", param);
+            visualizeBox(new_segments, pubBoundingBox, currentHeader.stamp, "/local_map", param);
+
+            visualizeCloud(localMapCloudStatic, pubLocalMapStatic, currentHeader.stamp, "/local_map", param);
+            visualizeCloud(localMapCloudDynamic, pubLocalMapDynamic, currentHeader.stamp, "/local_map", param);
+
+            // visualizeSegmentsCentroids(new_segments, pubSegmentCenter, currentHeader.stamp, "/local_map", param)) 
 
             newGroundCloudLast = false;
             newSegmentedCloudLast = false;
@@ -268,6 +304,23 @@ public:
             }
         }
 
+        // transformedLocalMapCloud->clear();
+        // pcl::transformPointCloud(*localMapCloudStatic, *transformedLocalMapCloud, delta_matrix);
+        localMapCloudStatic->clear();
+        // for (auto &p : transformedLocalMapCloud->points) {
+        //     if (sqrt(p.x * p.x + p.y * p.y + p.z * p.z) < param.localMapRadius) {
+        //         localMapCloudStatic->points.push_back(p);
+        //     }
+        // }
+        // transformedLocalMapCloud->clear();
+        // pcl::transformPointCloud(*localMapCloudDynamic, *transformedLocalMapCloud, delta_matrix);
+        localMapCloudDynamic->clear();
+        // for (auto &p : transformedLocalMapCloud->points) {
+        //     if (sqrt(p.x * p.x + p.y * p.y + p.z * p.z) < param.localMapRadius) {
+        //         localMapCloudDynamic->points.push_back(p);
+        //     }
+        // } 
+
         // 更新当前位置
         global_pose = T_matrix;
 
@@ -277,6 +330,7 @@ public:
     // save ground points into groundCloud
     void groundRemoval(pcl::PointCloud<PointType>::Ptr laserCloudIn, pcl::PointCloud<PointType>::Ptr groundCloud, pcl::PointCloud<PointType>::Ptr noGroundCloud) {
         // 移除地面
+        cout << "移除地面" << endl;
         pcl::SACSegmentation<PointType> seg;
         pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
         pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
@@ -378,6 +432,7 @@ public:
         //     printf("--  Error in IOU, Please Check Me. --\n");
         // }
     }
+
 
 };
 

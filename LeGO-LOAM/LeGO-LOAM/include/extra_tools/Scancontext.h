@@ -5,7 +5,6 @@
 #include "extra_tools/KDTreeVectorOfVectorsAdaptor.h"
 
 #include "extra_tools/tictoc.h"
-#include "parameter.h"
 #include "utility.h"
 
 #include <ctime>

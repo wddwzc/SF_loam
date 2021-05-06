@@ -4,6 +4,7 @@
 #include "utility.h"
 #include "cluster_method/segment.h"
 #include "kitti_label_color.h"
+#include "parameter.h"
 
 // record time
 class TimeRecorder {
@@ -36,8 +37,17 @@ private:
     double duration_ms;
 };
 
+
+vector<int> getCurrentColor(ParamServer &param, int id) {
+    if (param.classMapType == "normal")         return colors_map_tran[id];
+    else if (param.classMapType == "simple")    return colors_map_simple[id];
+    else                                        return colors_map[id];
+}
+
+
 void visualizeCloudRGB(pcl::PointCloud<PointType>::Ptr laserCloud, ros::Publisher &pub,
-                        ros::Time time, string frame_id) {
+                        ros::Time time, string frame_id,
+                        ParamServer &param) {
     if (pub.getNumSubscribers() != 0) {
         pcl::PointCloud<pcl::PointXYZRGB> laserCloudColor;
         for (auto &p : laserCloud->points) {
@@ -46,9 +56,10 @@ void visualizeCloudRGB(pcl::PointCloud<PointType>::Ptr laserCloud, ros::Publishe
             cur_p.y = p.y;
             cur_p.z = p.z;
             int class_id = p.label;
-            cur_p.r = colors_map_tran[class_id][0];
-            cur_p.g = colors_map_tran[class_id][1];
-            cur_p.b = colors_map_tran[class_id][2];
+            vector<int> cur_color = getCurrentColor(param, class_id);
+            cur_p.r = cur_color[0];
+            cur_p.g = cur_color[1];
+            cur_p.b = cur_color[2];
             laserCloudColor.push_back(cur_p);
         }
         sensor_msgs::PointCloud2 tempLaserCloud;
@@ -60,7 +71,8 @@ void visualizeCloudRGB(pcl::PointCloud<PointType>::Ptr laserCloud, ros::Publishe
 }
 
 void visualizeCloud(pcl::PointCloud<PointType>::Ptr laserCloud, ros::Publisher &pub,
-                    ros::Time time, string frame_id) {
+                    ros::Time time, string frame_id,
+                    ParamServer &param) {
     if (pub.getNumSubscribers() != 0) {
         sensor_msgs::PointCloud2 tempLaserCloud;
         pcl::toROSMsg(*laserCloud, tempLaserCloud);
@@ -71,7 +83,8 @@ void visualizeCloud(pcl::PointCloud<PointType>::Ptr laserCloud, ros::Publisher &
 }
 
 void visualizeBox(vector<Segment> &segments, ros::Publisher &pub,
-                    ros::Time time, string frame_id) {
+                    ros::Time time, string frame_id,
+                    ParamServer &param) {
 
     if (pub.getNumSubscribers() != 0) {
         visualization_msgs::MarkerArray boundingBoxArray;
@@ -108,9 +121,10 @@ void visualizeBox(vector<Segment> &segments, ros::Publisher &pub,
             if (boundingBox.scale.z == 0)
                 boundingBox.scale.z=0.1;
 
-            boundingBox.color.r = colors_map_tran[segment.semantic][0];
-            boundingBox.color.g = colors_map_tran[segment.semantic][1];
-            boundingBox.color.b = colors_map_tran[segment.semantic][2];
+            vector<int> cur_color = getCurrentColor(param, segment.semantic);
+            boundingBox.color.r = cur_color[0];
+            boundingBox.color.g = cur_color[1];
+            boundingBox.color.b = cur_color[2];
             boundingBox.color.a = 0.5;
 
             // boundingBox.lifetime = ros::Duration(1);
@@ -123,7 +137,8 @@ void visualizeBox(vector<Segment> &segments, ros::Publisher &pub,
 }
 
 void visualizeSegments(vector<Segment> &segments, ros::Publisher &pub,
-                        ros::Time time, string frame_id) {
+                        ros::Time time, string frame_id,
+                        ParamServer &param) {
     if (pub.getNumSubscribers() != 0) {
         pcl::PointCloud<pcl::PointXYZRGB> laserCloudColor;
         for (auto &seg : segments) {
@@ -133,9 +148,10 @@ void visualizeSegments(vector<Segment> &segments, ros::Publisher &pub,
                 cur_p.x = seg.centroid.x;
                 cur_p.y = seg.centroid.y;
                 cur_p.z = seg.centroid.z;
-                cur_p.r = colors_map_tran[class_id][0];
-                cur_p.g = colors_map_tran[class_id][1];
-                cur_p.b = colors_map_tran[class_id][2];
+                vector<int> cur_color = getCurrentColor(param, class_id);
+                cur_p.r = cur_color[0];
+                cur_p.g = cur_color[1];
+                cur_p.b = cur_color[2];
                 laserCloudColor.push_back(cur_p);
             }
         }
@@ -145,6 +161,103 @@ void visualizeSegments(vector<Segment> &segments, ros::Publisher &pub,
         tempLaserCloud.header.frame_id = frame_id;
         pub.publish(tempLaserCloud);
     }
+}
+
+void visualizeSegmentsCentroids(vector<Segment> &segments, ros::Publisher &pub,
+                                ros::Time time, string frame_id,
+                                ParamServer &param) {
+    
+    // marker_Centroid2Seg.header.frame_id = "base_link";
+    // marker_Centroid2Seg.header.stamp = ros::Time();
+    // marker_Centroid2Seg.ns = "my_namespace";
+    // marker_Centroid2Seg.id = 0;
+    // marker_Centroid2Seg.type = visualization_msgs::Marker::LINE_LIST;
+    // marker_Centroid2Seg.action = visualization_msgs::Marker::ADD;
+    // marker_Centroid2Seg.pose.orientation.w = 1.0;
+    // marker_Centroid2Seg.scale.x = 0.1;
+    // marker_Centroid2Seg.color.r = 1.0f;
+    // marker_Centroid2Seg.color.a = 1.0f;
+    
+    
+    // for (auto &segment_to_add : cluster_indices) {
+    //     unsigned int sz = segment_to_add.indices.size();
+
+    //     if (param.debugOctomapCluster) cout << "cur_segment_size: " << sz << endl;
+
+        
+
+    //     pcl::PointXYZRGB centroid(0.0, 0.0, 0.0);
+    //     vector<unsigned int> class_counts(26, 0);
+    //     for (auto &index : segment_to_add.indices) {
+    //         pcl::PointXYZL &cur_point = laserCloud_noGround->points[index];
+    //         unsigned class_id = classes_map[cur_point.label];
+    //         ++class_counts[class_id];
+    //         centroid.x += cur_point.x;
+    //         centroid.y += cur_point.y;
+    //         centroid.z += cur_point.z;
+    //     }
+    //     centroid.x /= (float)sz;
+    //     centroid.y /= (float)sz;
+    //     centroid.z /= (float)sz;
+
+    //     unsigned int segment_class = 0;
+    //     for (int i = 0; i < 25; ++i) {
+    //         if (class_counts[i] / (float)sz >= 0.6)
+    //             segment_class = i;
+    //     }
+    //     centroid.r = colors_map_tran[segment_class][0];
+    //     centroid.g = colors_map_tran[segment_class][1];
+    //     centroid.b = colors_map_tran[segment_class][2];
+
+    //     // add marker
+    //     geometry_msgs::Point marker_p;
+    //     marker_p.x = centroid.x;
+    //     marker_p.y = centroid.y;
+    //     marker_p.z = centroid.z;
+    //     marker_Centroid2Seg.points.push_back(marker_p);
+    //     marker_p.z += 10.0;
+    //     marker_Centroid2Seg.points.push_back(marker_p);
+
+    //     classifiedCentroidRGB->push_back(centroid);
+    //     centroid.z += 10.0;
+    //     classifiedCentroidRGB->push_back(centroid);
+
+    //     for (auto &index : segment_to_add.indices) {
+    //         pcl::PointXYZL cur_point = laserCloud_noGround->points[index];
+    //         pcl::PointXYZRGB cur_p;
+    //         cur_p.x = cur_point.x;
+    //         cur_p.y = cur_point.y;
+    //         cur_p.z = cur_point.z;
+    //         cur_p.r = colors_map_tran[segment_class][0];
+    //         cur_p.g = colors_map_tran[segment_class][1];
+    //         cur_p.b = colors_map_tran[segment_class][2];
+    //         classifiedCloud->push_back(cur_p);
+    //     }
+    // }
+
+
+    // if (pub.getNumSubscribers() != 0) {
+    //     pcl::PointCloud<pcl::PointXYZRGB> laserCloudColor;
+    //     for (auto &seg : segments) {
+    //         int class_id = seg.semantic;
+    //         for (auto &p : seg.segmentCloud) {
+    //             pcl::PointXYZRGB cur_p;
+    //             cur_p.x = seg.centroid.x;
+    //             cur_p.y = seg.centroid.y;
+    //             cur_p.z = seg.centroid.z;
+    //             vector<int> cur_color = getCurrentColor(param, class_id);
+    //             cur_p.r = cur_color[0];
+    //             cur_p.g = cur_color[1];
+    //             cur_p.b = cur_color[2];
+    //             laserCloudColor.push_back(cur_p);
+    //         }
+    //     }
+    //     sensor_msgs::PointCloud2 tempLaserCloud;
+    //     pcl::toROSMsg(laserCloudColor, tempLaserCloud);
+    //     tempLaserCloud.header.stamp = time;
+    //     tempLaserCloud.header.frame_id = frame_id;
+    //     pub.publish(tempLaserCloud);
+    // }
 }
 
 

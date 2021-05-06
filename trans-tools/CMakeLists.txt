@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(trans_tools)
 
-set(CMAKE_BUILD_TYPE Debug)
+# set(CMAKE_BUILD_TYPE Debug)
+SET(CMAKE_BUILD_TYPE "Release")
 set(BUILD_STATIC_LIBS ON)
 set(BUILD_SHARED_LIBS OFF)
 set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
@@ -53,6 +54,7 @@ add_executable(data2value src/data2value.cpp)
 add_executable(savelabelmap src/savelabelmap.cpp)
 add_executable(extractSeg src/extractSeg.cpp)
 add_executable(cluster src/cluster.cpp)
+add_executable(pose2lidarframe src/pose2lidarframe.cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(odometry2kitti ${catkin_LIBRARIES})
@@ -60,3 +62,4 @@ target_link_libraries(data2value ${catkin_LIBRARIES})
 target_link_libraries(savelabelmap ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 target_link_libraries(extractSeg ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 target_link_libraries(cluster ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+target_link_libraries(pose2lidarframe ${catkin_LIBRARIES} ${PCL_LIBRARIES})

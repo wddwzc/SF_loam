@@ -1,25 +1,31 @@
 kittiProcess:
-    fusion: false   # true 则合并为all，false 则拆分为 xyzi 和 xyzl
+    fusion: true   # true 则合并为all，false 则拆分为 xyzi 和 xyzl
     laser_topic: "/kitti/velo/label"
 
 
 sf_loam:
     semantic: true  # true for type PointXYZIL, false for type PointXYZI
     semantic_point_cloud_topic: "/kitti/velo/pointall"
-    point_cloud_topic: "/kitti/velo/pointxyzi"
+    # semantic_point_cloud_topic: "/velodyne_points"
+    # semantic_point_cloud_topic: "/dut/lslidar/pointall"
+    # point_cloud_topic: "/kitti/velo/pointxyzi"
+    point_cloud_topic: "/velodyne_points"
     imu_data_topic: "/imu/data"
     odometry_topic: "/kitti/velodyne_poses"
+    # odometry_topic: "/odometry_gt"
     imu_que_length: 200
 
 
     imageProjection:
         use_cloud_ring: false
 
+        class_map_type: "simple"   #   raw   normal   simple
+
         sensor_minimum_range: 1.0   # filter the point inside the range
         sensor_mount_angle: 0.0
         sensor_to_ground: 1.4    # the distance from sensor to ground
         filter_ground_noise: true  # filter the negative plane point
-        use_simple_method: true    # use a simple or flexible method when filter_ground_noise is true
+        filter_ground_method: "label"    # height  label
 
         segment_theta: 60.0      # decrese this value may improve accuracy
         segment_valid_point_num: 5
@@ -33,6 +39,8 @@ sf_loam:
 
 
     featureAssociation:
+        skip_frame_num: 0
+
         edge_threshold: 0.1
         surf_threshold: 0.1
         nearest_feature_search_square_distance: 25
@@ -67,6 +75,16 @@ sf_loam:
 # 激光参数
 laser:
     is_vlp64: false
+
+    # LS-32C
+    # num_vertical_scans: 32
+    # num_horizontal_scans: 2000
+    # ang_vertical_res: 1.0               # degrees
+    # ang_horizontal_res: 0.18             # degrees
+    # ang_vertical_bottom: 16.1           # degrees
+    # ang_vertical_top: 15                # degrees
+    # ground_scan_index: 15
+    # scan_period: 0.1                    # seconds
 
     # VLP16
     # num_vertical_scans: 16
@@ -144,19 +162,19 @@ local_map:
     cluster_method: "CVC"   # "DBSCAN"  "NANO_DBSCAN"  "EUCLIDEAN"  "CVC"
     radius_growing: 0.15
     core_min_points: 5
-    min_cluster_size: 50
+    min_cluster_size: 20
     max_cluster_size: 25000
 
-    box_type_simple: true
+    box_type_simple: false
 
     dynamic_segment_search_radius: 3.0
     dynamic_iou_threshold: 0.3
 
-    debug_generator: true
+    debug_generator: false
     debug_transform: false
     debug_cluster: false
     debug_publish: false
 
-    debug_time_cost: true
+    debug_time_cost: false
 
 
