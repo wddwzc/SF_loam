@@ -167,6 +167,7 @@ local_map:
 
     box_type_simple: false
 
+    
     dynamic_segment_search_radius: 3.0
     dynamic_iou_threshold: 0.3
 

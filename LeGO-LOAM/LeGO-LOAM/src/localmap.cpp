@@ -206,7 +206,7 @@ public:
             vector<Segment> new_segments;
             Cluster cluster;
             cluster.geometricSegmentation(param, noGroundCloud, new_segments);
-            // removeDynamicSegment(new_segments);
+            segmentsFusion(new_segments);
             
             
             *localMapCloud += *groundCloud;
@@ -239,7 +239,6 @@ public:
 
 
             visualizeCloudRGB(groundCloud, pubGroundCloud, currentHeader.stamp, "/local_map",  param);
-            // visualizeCloud(noGroundCloud, pubNoGroundCloud, currentHeader.stamp, "/local_map", param);
             visualizeCloudRGB(noGroundCloud, pubNoGroundCloud, currentHeader.stamp, "/local_map", param);
             visualizeCloudRGB(mapSegmentsCenters, pubSegmentCentroids, currentHeader.stamp, "/local_map", param);
             visualizeCloudRGB(localMapCloud, pubLocalMap, currentHeader.stamp, "/local_map", param);
@@ -359,7 +358,7 @@ public:
         }
     }
 
-    void removeDynamicSegment(vector<Segment> &new_segments) {
+    void segmentsFusion(vector<Segment> &new_segments) {
         if (mapSegments.empty()) {
             return;
         }
@@ -371,27 +370,38 @@ public:
             vector<float> centroidSearchSqDis;
             kdtreeSurroundSegments.radiusSearch(new_seg.boxCenter, (double)param.dynamicSegmentSearchRadius,
                                                     centroidSearchInd, centroidSearchSqDis, 0);
-            for (size_t i = 0; i < centroidSearchInd.size(); ++i) {
-                int ind = centroidSearchInd[i];
-                auto &qSegment = mapSegments[ind];
-                float qVolume = qSegment.box.cube_width * qSegment.box.cube_length * qSegment.box.cube_height;
-                float newVolume = new_seg.box.cube_width * new_seg.box.cube_length * new_seg.box.cube_height;
-                double interSection = getIntersection(qSegment.box, new_seg.box);
-                double iou = interSection / (qVolume + newVolume - interSection);
-                if (interSection > 0.0) {
-                    if (interSection < param.dynamicIouThreshold) {
-                        qSegment.segmentCloud = new_seg.segmentCloud;
-                        qSegment.updateBox();
+            if (centroidSearchInd.empty()) {
+                mapSegments.push_back(new_seg);
+            }
+            else {
+                for (size_t i = 0; i < centroidSearchInd.size(); ++i) {
+                    int ind = centroidSearchInd[i];
+                    auto &qSegment = mapSegments[ind];
+                    float qVolume = qSegment.box.cube_width * qSegment.box.cube_length * qSegment.box.cube_height;
+                    float newVolume = new_seg.box.cube_width * new_seg.box.cube_length * new_seg.box.cube_height;
+                    double interSection = getIntersection(qSegment.box, new_seg.box);
+                    double iou = interSection / (qVolume + newVolume - interSection);
+                    if (interSection > 0.1) {
+                        if (interSection < param.dynamicIouThreshold) {
+                            qSegment.segmentCloud = new_seg.segmentCloud;
+                            qSegment.updateBox();
+                        }
+                        else {
+                            qSegment.segmentCloud += new_seg.segmentCloud;
+                            qSegment.updateBox();
+                        }
                     }
                     else {
-                        qSegment.segmentCloud += new_seg.segmentCloud;
-                        qSegment.updateBox();
+                        mapSegments.push_back(new_seg);
                     }
                 }
-                else {
-                    mapSegments.push_back(new_seg);
-                }
             }
+        }
+
+        mapSegmentsCenters->clear();
+        for (auto &map_seg : mapSegments) {
+            auto center = map_seg.boxCenter;
+            mapSegmentsCenters->points.push_back(center);
         }
         
     }
